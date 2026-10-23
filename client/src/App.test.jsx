@@ -1,36 +1,25 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import App from './App.jsx';
 
+// Mock authApi for top-level app render
+vi.mock('./api/auth.api.js', () => ({
+  default: {
+    refresh: vi.fn().mockRejectedValue(new Error('No existing session'))
+  }
+}));
+
 describe('App Component', () => {
-  beforeEach(() => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        success: true,
-        data: {
-          status: 'UP',
-          uptime: 10,
-          database: 'connected'
-        },
-        error: null
-      })
-    });
-  });
-
-  it('renders application header and title', async () => {
+  it('renders application navigation and landing page hero', async () => {
     render(<App />);
-    expect(screen.getByText('Enterprise Carpooling Platform')).toBeInTheDocument();
-    expect(screen.getByText('Phase 1: Foundation')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText('Operational')).toBeInTheDocument();
-    });
-  });
 
-  it('fetches and displays system status', async () => {
-    render(<App />);
     await waitFor(() => {
-      expect(screen.getByText('Operational')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/share the drive/i);
     });
+
+    expect(screen.getAllByText(/enterprise carpooling/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Find a Ride')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Offer a Ride')[0]).toBeInTheDocument();
   });
 });

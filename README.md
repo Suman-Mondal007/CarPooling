@@ -173,5 +173,53 @@ docker compose up --build
 
 ---
 
+## 🌱 Database Seeding & Demo Credentials
+
+To populate your local MongoDB with a verified demo organization, company administrator, and sample employees:
+
+```bash
+# Seed development database
+npm run seed
+
+# Seed with employee auto-approval enabled
+# (Windows CMD)
+set SEED_AUTO_APPROVE=true&& npm run seed
+# (PowerShell)
+$env:SEED_AUTO_APPROVE='true'; npm run seed
+```
+
+> **Note**: The seed script will immediately abort if `NODE_ENV=production`.
+
+### Seed Accounts Created:
+- **Organization**: `Acme Global Technologies`
+- **Registration Code**: `ACME2026`
+- **Company Admin**:
+  - Email: `admin@enterprise.local`
+  - Password: `Admin@Pass123`
+- **Sample Employees** (Password for all: `Employee@Pass123`):
+  1. `priya.sharma@enterprise.local` (ID: EMP-101, Driver/Passenger)
+  2. `rahul.verma@enterprise.local` (ID: EMP-102, Driver/Passenger)
+  3. `sneha.patel@enterprise.local` (ID: EMP-103, Passenger)
+
+---
+
+## 📧 Password Reset in Development
+
+If SMTP credentials (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`) are not supplied in `server/.env`, the system automatically logs one-time password reset URLs directly to the server terminal console:
+
+```
+==================================================
+📧 [PASSWORD RESET EMAIL] (SMTP not configured)
+Recipient : user@enterprise.local
+Reset URL : http://localhost:5173/reset-password?token=...
+Expires   : in 1 hour
+==================================================
+```
+
+Clicking or copying that URL navigates to the Reset Password interface where new credentials can be established.
+
+---
+
 ## ⚠️ Known Limitations
-- Current Phase: Phase 1 (Foundation). Data models, domain workflows, and UI screens will be delivered in Phases 2–8 according to `docs/MASTER_PROMPT.md`.
+- Current Phase: Phase 2 (Design System & Authentication) completed.
+- Upcoming Phase: Phase 3 (Data models, vehicles CRUD, maps, and offer-a-ride workflows).

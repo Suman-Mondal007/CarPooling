@@ -11,10 +11,10 @@ const envSchema = z.object({
     process.env.NODE_ENV === 'test' ? 'mongodb://127.0.0.1:27017/carpooling-test' : 'mongodb://127.0.0.1:27017/carpooling'
   ),
   JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 characters').default(
-    process.env.NODE_ENV === 'test' ? 'test_jwt_access_secret_key_minimum_length_16' : ''
+    process.env.NODE_ENV === 'production' ? '' : 'dev_jwt_access_secret_min_16_chars_sample'
   ),
   JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 characters').default(
-    process.env.NODE_ENV === 'test' ? 'test_jwt_refresh_secret_key_minimum_length_16' : ''
+    process.env.NODE_ENV === 'production' ? '' : 'dev_jwt_refresh_secret_min_16_chars_sample'
   ),
   CLIENT_URL: z.string().url().default('http://localhost:5173'),
   COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
@@ -31,7 +31,8 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional().default(''),
   SMTP_FROM: z.string().optional().default('noreply@carpooling.local'),
   SEED_ADMIN_EMAIL: z.string().email().default('admin@enterprise.local'),
-  SEED_ADMIN_PASSWORD: z.string().min(8).default('Admin@Pass123')
+  SEED_ADMIN_PASSWORD: z.string().min(8).default('Admin@Pass123'),
+  SEED_AUTO_APPROVE: z.preprocess((val) => typeof val === 'string' ? val.trim().toLowerCase() === 'true' : Boolean(val), z.boolean()).default(false)
 });
 
 let parsedEnv;

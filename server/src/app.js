@@ -6,6 +6,10 @@ import morgan from 'morgan';
 import mongoose from 'mongoose';
 import rateLimit from 'express-rate-limit';
 import env from './config/env.js';
+import authRoutes from './routes/auth.routes.js';
+import userRoutes from './routes/user.routes.js';
+import organizationRoutes from './routes/organization.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 
 const app = express();
 
@@ -64,6 +68,12 @@ app.get('/api/health', (req, res) => {
     error: null
   });
 });
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/organizations', organizationRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((req, res) => {

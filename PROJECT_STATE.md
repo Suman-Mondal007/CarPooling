@@ -3,7 +3,7 @@
 ## 1. Project Overview
 - **Project**: Enterprise Carpooling Platform (MERN)
 - **Architecture**: Multi-tenant enterprise carpooling web application (React 18 + Express 4 + MongoDB + Socket.IO)
-- **Status**: Phase 1 (Foundation) Completed
+- **Status**: Phase 2 (Design System & Authentication) Completed
 
 ---
 
@@ -20,9 +20,51 @@
 - **Backend Core**: Configured `db.js` (Mongoose connection & disconnection), `app.js` (Express app with security headers, CORS with credentials, cookie parsing, rate limiting, error envelope formatting, and health check), and `server.js` (HTTP server + Socket.IO server + DB initialization + graceful shutdown).
 - **Health Check Endpoint**: Implemented `GET /api/health` conforming to `{ success, data, error }` API envelope.
 - **Vite Dev Proxy**: Configured Vite dev server to proxy `/api` and `/socket.io` to `http://localhost:5000`.
-- **Test Harness**: Configured Vitest for client and server. Implemented in-memory replica set harness (`MongoMemoryReplSet`) with automatic local binary detection. Added Supertest health check test for backend and Vitest unit test for frontend.
+- **Test Harness**: Configured Vitest for client and server. Implemented in-memory replica set harness (`MongoMemoryReplSet`) with automatic local binary detection.
 - **Root Scripts**: Configured `dev`, `build`, `lint`, `test`, `seed` in root `package.json`.
 - **CI Workflow**: Added `.github/workflows/ci.yml` covering install, lint, test, and build.
+
+### Phase 2: Design System & Authentication (Completed)
+- **Data Models**:
+  - `Organization`: name, unique uppercase `registrationCode`, timezone default `Asia/Kolkata`, settings (`autoApproveEmployees`, `requireEmployeeId`, `fuelPricePerLitre`, `operationalCostPerKm`, `cancellationCutoffMinutes`, `requireVehicleVerification`), `isSeeded`.
+  - `User`: name, unique email, phone, `passwordHash` (hidden via `select: false` and `toJSON`), role (`EMPLOYEE | COMPANY_ADMIN`), organization ref, `employeeId`, status (`PENDING_APPROVAL | ACTIVE | SUSPENDED | DEACTIVATED`), `licenceNumber`, `passwordResetTokenHash` & expiry, `isSeeded`.
+  - `RefreshSession`: user ref, SHA-256 `tokenHash`, `familyId`, `expiresAt`, `revokedAt`, `replacedBy`.
+- **Security & Token Lifecycle**:
+  - Short-lived Access Token (15 min, `jwtid` uniqueness), kept **in memory only** by the client.
+  - Rotating Refresh Token (7 days) in `HttpOnly` cookie scoped to `/api/auth` (`SameSite=Lax`, `Secure` in production).
+  - Refresh token reuse detection automatically revokes all sessions belonging to the compromised family.
+  - CSRF protection on refresh and logout via Origin validation and `X-Requested-With` header verification.
+  - Password reset tokens stored exclusively as SHA-256 hashes with 1-hour expiry, single-use invalidation, and session revocation.
+- **Middleware & Endpoints**:
+  - `authenticate`, `authorize(roles)`, `organizationScope`, `validate(schema)`, `csrfProtection`.
+  - `authLimiter` and `passwordResetLimiter` rate limiting.
+  - `POST /api/auth/register` (organization registration code required; status based on `autoApproveEmployees`).
+  - `POST /api/auth/login` (rejects non-ACTIVE users with clear status messages; does not leak email existence).
+  - `POST /api/auth/refresh` (single-flight rotation + reuse detection).
+  - `POST /api/auth/logout` (invalidates session and clears cookie).
+  - `POST /api/auth/forgot-password` (sends email via Nodemailer or logs to server console in dev).
+  - `POST /api/auth/reset-password` (single-use validation with family revocation).
+  - `GET /api/auth/me`, `GET /api/users/me`, `PATCH /api/users/me`, `GET /api/organizations/me`, `GET /api/admin/settings`.
+- **Development Seeder**:
+  - `server/src/seed/seed.js` (`npm run seed`): Refuses in production; creates demo organization (`ACME2026`), 1 Company Admin, and 3 Active Employees; supports `SEED_AUTO_APPROVE=true`.
+- **Design System & UI Components**:
+  - Light backgrounds, navy typography, green/teal accents.
+  - Reusable: `Button`, `Input` (with password eye toggle), `Card`, `Modal` & `ConfirmDialog`, `Skeleton`, `Badge`, `EmptyState`, `react-hot-toast`.
+- **Pages & Layouts**:
+  - `PublicLayout`, `EmployeeLayout` (sidebar/topbar, profile dropdown with functional Logout), `AdminLayout`.
+  - `SplashScreen` (animated brand splash during session restore).
+  - `LandingPage` (hero, prominent Find & Offer actions, how-it-works, illustrative stats, footer).
+  - `LoginPage`, `RegisterPage` (React Hook Form + Zod), `ForgotPasswordPage`, `ResetPasswordPage`, `NotFoundPage`.
+  - `DashboardPage` (with the TWO prominent, equally clear action cards: Find a Ride and Offer a Ride).
+  - `ProfilePage` (profile view & edit).
+  - `AdminDashboardPage` (metrics shell and administrative shortcuts).
+  - `PlaceholderPage` for unbuilt routes with "Coming in a later phase" badges.
+  - `ProtectedRoute` enforcing authentication and role redirection.
+- **Verification**:
+  - All 20 backend integration tests passing (100%).
+  - All 5 frontend tests passing (100%).
+  - Linter: 0 errors, 0 warnings across all workspaces.
+  - Production client build succeeds in <2 seconds.
 
 ---
 
@@ -35,9 +77,11 @@
      "error": null
    }
    ```
-2. **ES Modules**: Standardized on native ES modules (`"type": "module"`) across both client and server.
-3. **Database Transactions**: Mongoose connection configured with optional replica-set support in tests. Code logic is designed to use atomic updates (`findOneAndUpdate`) with compensating rollbacks to remain safe without mandatory transactions.
-4. **Environment Safety**: Secrets must never be committed; startup validates mandatory keys with actionable error logs.
+2. **In-Memory Access Tokens**: The frontend keeps JWT access tokens strictly in memory state (`AuthContext` / Axios module variable). They are never saved to `localStorage` or `sessionStorage`.
+3. **Session Persistence**: App startup initiates a silent refresh call (`POST /api/auth/refresh`) using the `HttpOnly` cookie while showing the `SplashScreen`.
+4. **Single-Flight Refresh Lock**: If parallel requests encounter a 401, a single refresh request is dispatched while concurrent requests queue and await the new token.
+5. **No Tenant Leakage**: Registration requires typing the organization's registration code; no public tenant list is ever displayed.
+6. **No Email Enumeration**: Login and forgot-password endpoints never reveal whether an email exists in the system.
 
 ---
 
@@ -49,52 +93,56 @@ carpooling-platform/
 │       └── ci.yml               # Continuous Integration (install, lint, test, build)
 ├── client/
 │   ├── src/
-│   │   ├── api/                 # API client services (axios)
-│   │   ├── components/          # Common, layout, forms, maps, rides, trips, charts
-│   │   ├── context/             # Auth, notifications, ride drafts
-│   │   ├── hooks/               # Custom React hooks
+│   │   ├── api/                 # axios.js (refresh interceptor), auth.api.js
+│   │   ├── components/
+│   │   │   └── common/          # Button, Input, Card, Modal, Skeleton, Badge, EmptyState
+│   │   ├── context/             # AuthContext.jsx
 │   │   ├── layouts/             # PublicLayout, EmployeeLayout, AdminLayout
-│   │   ├── pages/               # public/, employee/, admin/, NotFoundPage.jsx
+│   │   ├── pages/
+│   │   │   ├── public/          # SplashScreen, LandingPage, LoginPage, RegisterPage,
+│   │   │   │                    # ForgotPasswordPage, ResetPasswordPage, NotFoundPage
+│   │   │   ├── employee/        # DashboardPage, ProfilePage
+│   │   │   ├── admin/           # AdminDashboardPage
+│   │   │   └── PlaceholderPage.jsx # "Coming in a later phase" for future routes
 │   │   ├── routes/              # AppRoutes.jsx, ProtectedRoute.jsx
-│   │   ├── utils/               # Formatting, constants
-│   │   ├── App.jsx              # App root component
-│   │   ├── App.test.jsx         # App component tests
+│   │   ├── App.jsx              # Router, AuthProvider, Toaster wrapper
+│   │   ├── App.test.jsx
 │   │   ├── index.css            # Tailwind CSS v4 entry
-│   │   ├── main.jsx             # React DOM entry
-│   │   └── setupTests.js        # Vitest jest-dom setup
+│   │   └── main.jsx
 │   ├── .env.example
-│   ├── eslint.config.js         # ESLint flat config
-│   ├── index.html
+│   ├── eslint.config.js
 │   ├── package.json
-│   ├── vite.config.js           # Vite config with proxy & tailwind plugin
-│   └── vitest.config.js         # Client test configuration
+│   └── vite.config.js
 ├── docs/
-│   ├── Carpooling_Platform.pdf  # Original hackathon problem statement
-│   └── MASTER_PROMPT.md         # Full project specification & master prompt
+│   ├── Carpooling_Platform.pdf  # Problem statement & original requirements
+│   └── MASTER_PROMPT.md         # Full project specification
 ├── server/
 │   ├── src/
-│   │   ├── config/              # db.js (Mongoose), env.js (Zod env validation)
-│   │   ├── controllers/         # Module controllers
-│   │   ├── middleware/          # Auth, validation, rate limiting, error handling
-│   │   ├── models/              # Mongoose schemas & models
-│   │   ├── routes/              # Express API routers
-│   │   ├── seed/                # Seed script
-│   │   ├── services/            # Matching, geocoding, routing, payment, wallet, tracking
-│   │   ├── sockets/             # Socket.IO handlers
-│   │   ├── utils/               # Geo calculations, money helpers, asyncHandler
-│   │   ├── app.js               # Express application configuration
-│   │   └── server.js            # HTTP and Socket.IO entry point
+│   │   ├── config/              # db.js, env.js (Zod startup validation)
+│   │   ├── controllers/         # auth.controller.js, user.controller.js, organization.controller.js
+│   │   ├── middleware/          # authenticate, authorize, organizationScope, validate,
+│   │   │                        # rateLimiters, csrfProtection
+│   │   ├── models/              # Organization, User, RefreshSession
+│   │   ├── routes/              # auth.routes.js, user.routes.js, organization.routes.js, admin.routes.js
+│   │   ├── seed/                # seed.js (development seeder)
+│   │   ├── services/            # mail.service.js
+│   │   ├── utils/               # token.js (JWT & SHA-256 crypto helpers)
+│   │   ├── validators/          # auth.validator.js (Zod request schemas)
+│   │   ├── app.js               # Express application
+│   │   └── server.js            # HTTP & Socket.IO server
 │   ├── tests/
 │   │   ├── setup.js             # MongoMemoryReplSet harness
-│   │   └── health.test.js       # Health check tests
+│   │   ├── health.test.js       # Health endpoint test
+│   │   └── auth.test.js         # 18 authentication & authorization integration tests
 │   ├── .env.example
-│   ├── eslint.config.js         # ESLint flat config
-│   ├── package.json
-│   └── vitest.config.js         # Server test configuration
+│   ├── Dockerfile
+│   ├── eslint.config.js
+│   └── package.json
+├── docker-compose.yml
 ├── .gitignore
-├── package.json                 # Root monorepo workspace scripts
+├── package.json                 # Monorepo workspaces
 ├── PROJECT_STATE.md             # Persistent memory across development phases
-└── README.md                    # Project documentation
+└── README.md                    # Project documentation & instructions
 ```
 
 ---
@@ -108,53 +156,46 @@ carpooling-platform/
 | **Run Linter** | `npm run lint` |
 | **Run Tests (All Workspaces)** | `npm run test` |
 | **Build Production Client** | `npm run build` |
-| **Database Seed** | `npm run seed` |
+| **Seed Database (Development)** | `npm run seed` |
+| **Seed with Auto-Approval** | `set SEED_AUTO_APPROVE=true&& npm run seed` |
 
 ---
 
-## 6. Environment Variables Required
+## 6. Seed Credentials (Development)
 
-### Server (`server/.env` based on `server/.env.example`)
-| Variable | Description | Default / Example |
-|---|---|---|
-| `NODE_ENV` | Environment mode | `development` |
-| `PORT` | Backend listening port | `5000` |
-| `CLIENT_URL` | Frontend origin for CORS | `http://localhost:5173` |
-| `MONGODB_URI` | MongoDB connection URI | `mongodb://127.0.0.1:27017/carpooling` |
-| `JWT_ACCESS_SECRET` | Secret for short-lived access JWT (min 16 chars) | Must be filled in |
-| `JWT_REFRESH_SECRET` | Secret for refresh token (min 16 chars) | Must be filled in |
-| `COOKIE_SAME_SITE` | Cookie SameSite setting (`lax`, `strict`, `none`) | `lax` |
-| `COOKIE_SECURE` | Set cookie Secure flag | `false` in dev |
-| `GEOCODING_URL` | Nominatim / geocoding API URL | `https://nominatim.openstreetmap.org` |
-| `MAP_ROUTING_URL` | OSRM / routing API URL | `https://router.project-osrm.org` |
-| `GEO_USER_AGENT` | Nominatim compliant user-agent string | `CarpoolingPlatform/1.0 (contact@carpooling.local)` |
-| `RAZORPAY_KEY_ID` | Razorpay Test Key ID | `rzp_test_...` (optional for Phase 1) |
-| `RAZORPAY_KEY_SECRET` | Razorpay Test Key Secret | Optional for Phase 1 |
-| `ALLOW_SIMULATED_PAYMENTS`| Allow fallback simulated payments | `true` |
-| `SEED_ADMIN_EMAIL` | Default seed administrator email | `admin@enterprise.local` |
-| `SEED_ADMIN_PASSWORD` | Default seed administrator password | `Admin@Pass123` |
-
-### Client (`client/.env` based on `client/.env.example`)
-| Variable | Description | Default / Example |
-|---|---|---|
-| `VITE_API_URL` | Optional API base URL override | Leave empty in dev (uses Vite proxy) |
-| `VITE_MAP_TILE_URL` | Tile map provider URL | `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png` |
-| `VITE_MAP_ATTRIBUTION`| Map attribution string | `&copy; OpenStreetMap contributors` |
-| `VITE_RAZORPAY_KEY_ID`| Razorpay public test key ID | `rzp_test_...` (optional for Phase 1) |
+Run `npm run seed` to populate demo records:
+- **Organization**: `Acme Global Technologies`
+- **Registration Code**: `ACME2026`
+- **Company Admin**:
+  - Email: `admin@enterprise.local`
+  - Password: `Admin@Pass123`
+- **Sample Employees** (Password for all: `Employee@Pass123`):
+  1. `priya.sharma@enterprise.local` (EMP-101, Driver/Passenger)
+  2. `rahul.verma@enterprise.local` (EMP-102, Driver/Passenger)
+  3. `sneha.patel@enterprise.local` (EMP-103, Passenger)
 
 ---
 
-## 7. Known Issues / Limitations
-- None in Phase 1. All baseline unit tests, linting, and build pass cleanly.
+## 7. Password Reset in Development
+When SMTP environment variables (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`) are omitted, requesting a password reset via `POST /api/auth/forgot-password` prints the full one-time reset link directly into the server terminal console:
+```
+==================================================
+📧 [PASSWORD RESET EMAIL] (SMTP not configured)
+Recipient : user@enterprise.local
+Reset URL : http://localhost:5173/reset-password?token=...
+Expires   : in 1 hour
+==================================================
+```
+Clicking or pasting that link navigates to `ResetPasswordPage.jsx` where the new password can be configured.
 
 ---
 
 ## 8. Next Step
-- **Phase 2 — Design System and Authentication**:
-  - Implement full design system tokens, typography, and reusable components.
-  - Implement Splash screen, Landing page, Register, Login, Refresh/Logout, Forgot/Reset password.
-  - Setup AuthContext with axios refresh token interceptor (single-flight lock).
-  - Setup protected routes with role-based routing (EmployeeLayout, AdminLayout).
-  - Implement Organization model with unique registration code.
-  - Implement dev admin seed.
-  - Auth and authorization tests.
+- **Phase 3 — Data Models, Vehicles, Maps, Offer a Ride**:
+  - Implement remaining Mongoose models: `Vehicle`, `Ride`, `Trip`, `TrackingPoint`, `SavedPlace`.
+  - Indian vehicle registration validation (`KA01AB1234` / BH-series) and vehicle CRUD.
+  - Geo proxy services (`/api/geo/search`, `/api/geo/reverse`, `/api/geo/route` via Nominatim & OSRM with debouncing and caching).
+  - Leaflet `MapPicker` and `RouteMap` components with OpenStreetMap tiles.
+  - Route confirmation screen (`mode = offer`).
+  - Publish Ride (generates dated Ride + scheduled Trip records, recurrence groups).
+  - My Offered Rides page.
