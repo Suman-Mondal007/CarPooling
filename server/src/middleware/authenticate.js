@@ -59,6 +59,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     req.user = user;
+    req.organization = user.organization;
     req.organizationId = user.organization?._id || user.organization;
     next();
   } catch (error) {

@@ -16,7 +16,8 @@ import {
   LogOut,
   ChevronDown,
   Menu,
-  X
+  X,
+  Bookmark
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import Badge from '../components/common/Badge.jsx';
@@ -161,6 +162,15 @@ export function EmployeeLayout() {
                   >
                     <Car className="w-4 h-4 text-slate-400" />
                     <span>My Vehicles</span>
+                  </Link>
+
+                  <Link
+                    to="/saved-places"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center space-x-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-teal-700"
+                  >
+                    <Bookmark className="w-4 h-4 text-slate-400" />
+                    <span>Saved Places</span>
                   </Link>
 
                   <Link

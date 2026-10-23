@@ -18,6 +18,10 @@ import NotFoundPage from '../pages/public/NotFoundPage.jsx';
 // Employee Pages
 import DashboardPage from '../pages/employee/DashboardPage.jsx';
 import ProfilePage from '../pages/employee/ProfilePage.jsx';
+import OfferRidePage from '../pages/employee/OfferRidePage.jsx';
+import RouteConfirmationPage from '../pages/employee/RouteConfirmationPage.jsx';
+import VehiclesPage from '../pages/employee/VehiclesPage.jsx';
+import SavedPlacesPage from '../pages/employee/SavedPlacesPage.jsx';
 
 // Admin Pages
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage.jsx';
@@ -46,16 +50,16 @@ export function AppRoutes() {
           <Route path="/rides" element={<PlaceholderPage title="Available Rides" phase="Phase 4" />} />
           <Route path="/rides/:id" element={<PlaceholderPage title="Ride Details" phase="Phase 4" />} />
           <Route path="/booking-confirmation/:bookingId" element={<PlaceholderPage title="Booking Confirmation" phase="Phase 4" />} />
-          <Route path="/offer-ride" element={<PlaceholderPage title="Offer a Ride" phase="Phase 3" description="Vehicle selection, route configuration, and scheduled seat publishing will be available here." />} />
-          <Route path="/offer-ride/confirm-route" element={<PlaceholderPage title="Route Confirmation" phase="Phase 3" />} />
-          <Route path="/vehicles" element={<PlaceholderPage title="My Vehicles" phase="Phase 3" description="Manage your registered personal vehicles and review company admin verification status." />} />
+          <Route path="/offer-ride" element={<OfferRidePage />} />
+          <Route path="/offer-ride/confirm-route" element={<RouteConfirmationPage mode="offer" />} />
+          <Route path="/vehicles" element={<VehiclesPage />} />
           <Route path="/my-trips" element={<PlaceholderPage title="My Trips" phase="Phase 4" description="Manage your scheduled passenger bookings and offered driver journeys." />} />
           <Route path="/trips/:id" element={<PlaceholderPage title="Trip Details" phase="Phase 4" />} />
           <Route path="/trips/:id/tracking" element={<PlaceholderPage title="Live Trip Tracking" phase="Phase 5" description="Real-time vehicle map tracking with WebSockets and dynamic ETA." />} />
           <Route path="/trips/:id/pay" element={<PlaceholderPage title="Trip Payment" phase="Phase 6" description="Sandbox payment checkout via Razorpay card, UPI, cash, and digital wallet." />} />
           <Route path="/wallet" element={<PlaceholderPage title="Digital Wallet" phase="Phase 6" description="Internal wallet ledger with simulated recharge and fare settlement." />} />
           <Route path="/history" element={<PlaceholderPage title="Ride History" phase="Phase 7" description="Historical log of completed trips with search and filtering." />} />
-          <Route path="/saved-places" element={<PlaceholderPage title="Saved Places" phase="Phase 3" description="Manage frequently used home, office, and route addresses." />} />
+          <Route path="/saved-places" element={<SavedPlacesPage />} />
           <Route path="/chat" element={<PlaceholderPage title="Trip Chat" phase="Phase 5" description="Real-time trip messaging between verified drivers and co-passengers." />} />
           <Route path="/notifications" element={<PlaceholderPage title="Notifications" phase="Phase 5" description="Notification feed for bookings, journey progress, and payments." />} />
           <Route path="/reports" element={<PlaceholderPage title="Commute Reports" phase="Phase 7" description="Personalized travel statistics, cost savings, and fuel efficiency metrics." />} />

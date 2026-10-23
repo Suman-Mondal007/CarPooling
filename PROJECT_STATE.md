@@ -3,7 +3,7 @@
 ## 1. Project Overview
 - **Project**: Enterprise Carpooling Platform (MERN)
 - **Architecture**: Multi-tenant enterprise carpooling web application (React 18 + Express 4 + MongoDB + Socket.IO)
-- **Status**: Phase 2 (Design System & Authentication) Completed
+- **Status**: Phase 3 (Data Models, Vehicles, Maps, Offer a Ride) Completed
 
 ---
 
@@ -65,6 +65,46 @@
   - All 5 frontend tests passing (100%).
   - Linter: 0 errors, 0 warnings across all workspaces.
   - Production client build succeeds in <2 seconds.
+
+### Phase 3: Data Models, Vehicles, Maps, Offer a Ride (Completed)
+- **Data Models & GeoJSON Indexes**:
+  - Completed all Mongoose models with validation, timestamps, references, and indexes:
+    - `Vehicle`: Indian registration validation (`REGISTRATION_REGEX`), model, seating capacity, fuel type, fuel efficiency (supports EV 0 km/l), verification status, organization-scoped unique index.
+    - `Ride`: GeoJSON `Point` for origin/destination with `2dsphere` indexes, simplified `LineString` route geometry (<= 300 points), distance/duration, paise fare, recurrence group ID.
+    - `Trip`: Execution record linked 1-to-1 with Ride, tracking status lifecycle (`SCHEDULED`, `STARTED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`).
+    - `TrackingPoint`: Location breadcrumbs with TTL index for 7-day privacy auto-deletion.
+    - `Booking`: Instant seat reservations with partial unique index on `(ride, passenger)` where status is `CONFIRMED`.
+    - `Payment`, `Wallet`, `WalletTransaction`, `SavedPlace`, `Message`, `Notification`.
+- **Geographic Utilities & Proxies**:
+  - `geo.js`: Haversine formula, Ramer-Douglas-Peucker (RDP) polyline simplification to <= 300 points, coordinate boundary format conversions.
+  - `geocoding.service.js`: Nominatim proxy with caching, countrycode filtering, 1 req/sec rate throttling, and User-Agent header compliance.
+  - `routing.service.js`: OSRM routing proxy with polyline simplification and 24h caching.
+  - Endpoints: `GET /api/geo/search`, `GET /api/geo/reverse`, `POST /api/geo/route`.
+- **Vehicle Management**:
+  - Full CRUD (`/api/vehicles`) with Indian registration number normalization and validation.
+  - Admin verification requirement enforcement based on organization settings (`requireVehicleVerification`).
+  - Active ride/trip protection preventing deletion of vehicles currently in use.
+- **Saved Places**:
+  - Full CRUD (`/api/saved-places`) for HOME, OFFICE, and CUSTOM locations with GeoJSON boundary conversion.
+- **Offer a Ride Workflow**:
+  - `POST /api/rides`: Publishes ride and automatically creates corresponding `SCHEDULED` Trip.
+  - Seat capacity validation strictly enforces `totalPassengerSeats <= vehicle.seatingCapacity - 1`.
+  - Recurring schedule engine: Generates dated Ride and Trip records with shared UUID `recurrenceGroupId` for up to 4 weeks (max 20 instances).
+  - `GET /api/rides/my-offered`: Returns driver's offered rides with populated vehicle and trip statuses.
+  - `POST /api/rides/:id/cancel`: Driver cancellation restricted to `SCHEDULED` status; marks Ride and Trip as `CANCELLED` and cascades cancellation to active passenger bookings.
+- **Frontend Maps & Offer UI**:
+  - Leaflet 1.9 + React-Leaflet integration with custom SVG pin markers and fixed Vite bundling assets.
+  - `MapPicker`: Interactive map with debounced address autocomplete, GPS geolocation, saved place quick chips, and draggable pin.
+  - `RouteMap`: Polyline route rendering, auto-bounding, and floating distance/duration badge.
+  - `VehiclesPage` (`/vehicles`): Responsive vehicle list, verification badges, and registration modal.
+  - `SavedPlacesPage` (`/saved-places`): Commute shortcut manager with interactive map pin placement.
+  - `OfferRidePage` (`/offer-ride`): Single-page wizard with vehicle selector, passenger seat clamp, live route preview, recurring weekday toggles, and fair fare suggestions.
+  - `RouteConfirmationPage` (`/offer-ride/confirm-route`): Route review with Map preview, itinerary summary, and draft state via `RideDraftContext`.
+- **Verification**:
+  - 32 backend tests passing across health, auth, and phase 3 suites (100%).
+  - 5 frontend tests passing (100%).
+  - Linter: 0 errors, 0 warnings across all workspaces.
+  - Production client build succeeds in 7.22s.
 
 ---
 
@@ -191,11 +231,12 @@ Clicking or pasting that link navigates to `ResetPasswordPage.jsx` where the new
 ---
 
 ## 8. Next Step
-- **Phase 3 — Data Models, Vehicles, Maps, Offer a Ride**:
-  - Implement remaining Mongoose models: `Vehicle`, `Ride`, `Trip`, `TrackingPoint`, `SavedPlace`.
-  - Indian vehicle registration validation (`KA01AB1234` / BH-series) and vehicle CRUD.
-  - Geo proxy services (`/api/geo/search`, `/api/geo/reverse`, `/api/geo/route` via Nominatim & OSRM with debouncing and caching).
-  - Leaflet `MapPicker` and `RouteMap` components with OpenStreetMap tiles.
-  - Route confirmation screen (`mode = offer`).
-  - Publish Ride (generates dated Ride + scheduled Trip records, recurrence groups).
-  - My Offered Rides page.
+- **Phase 4 — Find a Ride and Booking**:
+  - Matching service: search rides with origin/destination proximity and pickup-before-drop verification along route geometry.
+  - Find a Ride UI: location search, route confirmation, available rides list with driver cards.
+  - Ride details and booking page.
+  - Atomic booking reservation (preventing overbooking, concurrent reservation safety).
+  - Cancellation rules (cancellation cutoff window, seat return).
+  - My Trips page with passenger and driver tabs.
+  - Trip execution transitions (SCHEDULED -> STARTED -> IN_PROGRESS -> COMPLETED).
+  - Concurrency tests for booking reservations.

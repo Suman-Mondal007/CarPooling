@@ -10,6 +10,10 @@ import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import organizationRoutes from './routes/organization.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import vehicleRoutes from './routes/vehicle.routes.js';
+import savedPlaceRoutes from './routes/savedPlace.routes.js';
+import geoRoutes from './routes/geo.routes.js';
+import rideRoutes from './routes/ride.routes.js';
 
 const app = express();
 
@@ -74,6 +78,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/vehicles', vehicleRoutes);
+app.use('/api/saved-places', savedPlaceRoutes);
+app.use('/api/geo', geoRoutes);
+app.use('/api/rides', rideRoutes);
 
 // 404 handler
 app.use((req, res) => {

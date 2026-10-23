@@ -12,6 +12,7 @@ export const organizationScope = (req, res, next) => {
   }
 
   const orgId = req.user.organization._id || req.user.organization;
+  req.organization = req.user.organization;
   req.organizationId = orgId;
   req.orgFilter = { organization: orgId };
 

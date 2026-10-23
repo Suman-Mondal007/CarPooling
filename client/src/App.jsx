@@ -2,13 +2,16 @@ import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { RideDraftProvider } from './context/RideDraftContext.jsx';
 import AppRoutes from './routes/AppRoutes.jsx';
 
 export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <RideDraftProvider>
+          <AppRoutes />
+        </RideDraftProvider>
         <Toaster
           position="top-right"
           toastOptions={{
