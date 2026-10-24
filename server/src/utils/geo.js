@@ -118,6 +118,96 @@ export function simplifyPolyline(points, maxPoints = 300) {
 }
 
 /**
+ * Projects a point onto a line segment and calculates distance in meters.
+ * Coordinates are [lng, lat].
+ */
+export function projectPointToSegment(point, segStart, segEnd) {
+  const pLng = point[0];
+  const pLat = point[1];
+  const sLng = segStart[0];
+  const sLat = segStart[1];
+  const eLng = segEnd[0];
+  const eLat = segEnd[1];
+
+  const dx = eLng - sLng;
+  const dy = eLat - sLat;
+
+  let t = 0;
+  if (dx !== 0 || dy !== 0) {
+    t = ((pLng - sLng) * dx + (pLat - sLat) * dy) / (dx * dx + dy * dy);
+    t = Math.max(0, Math.min(1, t));
+  }
+
+  const projPoint = [sLng + t * dx, sLat + t * dy];
+  const distanceMeters = haversineDistance(point, projPoint);
+
+  return {
+    projPoint,
+    t,
+    distanceMeters
+  };
+}
+
+/**
+ * Projects a point onto a polyline and calculates the minimum distance in meters
+ * and the cumulative distance along the polyline up to the projection.
+ * Coordinates are [lng, lat].
+ * @param {[number, number] | { lat: number, lng: number }} point
+ * @param {Array<[number, number]>} polylineCoords
+ * @returns {{
+ *   minDistanceMeters: number,
+ *   cumulativeDistanceMeters: number,
+ *   segmentIndex: number
+ * }}
+ */
+export function projectPointToPolyline(point, polylineCoords) {
+  const pt = Array.isArray(point) ? point : [point.lng, point.lat];
+
+  if (!polylineCoords || polylineCoords.length === 0) {
+    return { minDistanceMeters: Infinity, cumulativeDistanceMeters: 0, segmentIndex: -1 };
+  }
+
+  if (polylineCoords.length === 1) {
+    return {
+      minDistanceMeters: haversineDistance(pt, polylineCoords[0]),
+      cumulativeDistanceMeters: 0,
+      segmentIndex: 0
+    };
+  }
+
+  let minDistanceMeters = Infinity;
+  let bestSegmentIndex = 0;
+  let bestFraction = 0;
+  let distanceAlongPolyline = 0;
+  let bestCumulativeDistance = 0;
+
+  for (let i = 0; i < polylineCoords.length - 1; i++) {
+    const segStart = polylineCoords[i];
+    const segEnd = polylineCoords[i + 1];
+    const segLength = haversineDistance(segStart, segEnd);
+
+    const { distanceMeters, t } = projectPointToSegment(pt, segStart, segEnd);
+
+    if (distanceMeters < minDistanceMeters) {
+      minDistanceMeters = distanceMeters;
+      bestSegmentIndex = i;
+      bestFraction = t;
+      bestCumulativeDistance = distanceAlongPolyline + t * segLength;
+    }
+
+    distanceAlongPolyline += segLength;
+  }
+
+  return {
+    minDistanceMeters: Math.round(minDistanceMeters),
+    cumulativeDistanceMeters: Math.round(bestCumulativeDistance),
+    segmentIndex: bestSegmentIndex,
+    fraction: bestFraction,
+    totalPolylineDistanceMeters: Math.round(distanceAlongPolyline)
+  };
+}
+
+/**
  * Converts API coordinates { lat, lng } to GeoJSON Point.
  */
 export function toGeoJsonPoint({ lat, lng }) {

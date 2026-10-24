@@ -43,6 +43,10 @@ const organizationSchema = new mongoose.Schema(
       requireVehicleVerification: {
         type: Boolean,
         default: true
+      },
+      allowStartWithoutPassengers: {
+        type: Boolean,
+        default: false
       }
     },
     isSeeded: {

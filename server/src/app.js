@@ -14,6 +14,9 @@ import vehicleRoutes from './routes/vehicle.routes.js';
 import savedPlaceRoutes from './routes/savedPlace.routes.js';
 import geoRoutes from './routes/geo.routes.js';
 import rideRoutes from './routes/ride.routes.js';
+import bookingRoutes from './routes/booking.routes.js';
+import tripRoutes from './routes/trip.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
 
 const app = express();
 
@@ -82,6 +85,9 @@ app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/saved-places', savedPlaceRoutes);
 app.use('/api/geo', geoRoutes);
 app.use('/api/rides', rideRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/trips', tripRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 handler
 app.use((req, res) => {

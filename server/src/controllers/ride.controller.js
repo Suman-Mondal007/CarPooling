@@ -4,6 +4,8 @@ import Trip from '../models/Trip.js';
 import Booking from '../models/Booking.js';
 import Vehicle from '../models/Vehicle.js';
 import { toGeoJsonPoint, fromGeoJsonPoint } from '../utils/geo.js';
+import { searchMatchingRides } from '../services/matching.service.js';
+import { notifyRideCancelled } from '../services/notification.service.js';
 
 function formatRide(ride) {
   const obj = ride.toObject ? ride.toObject() : { ...ride };
@@ -283,11 +285,14 @@ export async function cancelOfferedRide(req, res, next) {
     trip.status = 'CANCELLED';
     await trip.save();
 
-    // Cancel all active bookings on this ride
+    // Cancel all active bookings on this ride and notify passengers
+    const confirmedBookings = await Booking.find({ ride: ride._id, status: 'CONFIRMED' });
     await Booking.updateMany(
       { ride: ride._id, status: 'CONFIRMED' },
       { status: 'CANCELLED_BY_DRIVER' }
     );
+
+    notifyRideCancelled(ride, confirmedBookings).catch(() => {});
 
     res.status(200).json({
       success: true,
@@ -295,6 +300,100 @@ export async function cancelOfferedRide(req, res, next) {
         message: 'Ride cancelled successfully',
         rideId: ride._id,
         tripId: trip._id
+      },
+      error: null
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function searchRides(req, res, next) {
+  try {
+    const {
+      pickupLat,
+      pickupLng,
+      dropLat,
+      dropLng,
+      date,
+      time,
+      windowMinutes,
+      seats,
+      recurringDays,
+      page,
+      limit
+    } = req.query;
+
+    if (!pickupLat || !pickupLng || !dropLat || !dropLng) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: {
+          code: 'MISSING_COORDINATES',
+          message: 'Both pickup (lat, lng) and drop (lat, lng) coordinates are required for ride search',
+          details: null
+        }
+      });
+    }
+
+    let parsedRecurringDays = null;
+    if (recurringDays) {
+      parsedRecurringDays = recurringDays.toString().split(',').map((d) => parseInt(d.trim(), 10)).filter((n) => !isNaN(n));
+    }
+
+    const results = await searchMatchingRides({
+      passengerId: req.user._id,
+      organizationId: req.organization._id,
+      pickup: { lat: parseFloat(pickupLat), lng: parseFloat(pickupLng) },
+      drop: { lat: parseFloat(dropLat), lng: parseFloat(dropLng) },
+      date: date || null,
+      time: time || null,
+      windowMinutes: windowMinutes ? parseInt(windowMinutes, 10) : 30,
+      seats: seats ? parseInt(seats, 10) : 1,
+      recurringWeekdays: parsedRecurringDays,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20
+    });
+
+    res.status(200).json({
+      success: true,
+      data: results,
+      error: null
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getRideById(req, res, next) {
+  try {
+    const ride = await Ride.findOne({
+      _id: req.params.id,
+      organization: req.organization._id
+    })
+      .populate('driver', 'name phone')
+      .populate('vehicle', 'model registrationNumber vehicleType color seatingCapacity fuelType verificationStatus');
+
+    if (!ride) {
+      return res.status(404).json({
+        success: false,
+        data: null,
+        error: {
+          code: 'RIDE_NOT_FOUND',
+          message: 'Ride not found',
+          details: null
+        }
+      });
+    }
+
+    const trip = await Trip.findOne({ ride: ride._id });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...formatRide(ride),
+        tripStatus: trip?.status || 'SCHEDULED',
+        tripId: trip?._id || null
       },
       error: null
     });

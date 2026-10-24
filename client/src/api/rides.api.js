@@ -14,6 +14,16 @@ export const ridesApi = {
   cancelOfferedRide: async (id) => {
     const res = await api.post(`/rides/${id}/cancel`);
     return res.data.data;
+  },
+
+  searchRides: async (params) => {
+    const res = await api.get('/rides/search', { params });
+    return res.data.data;
+  },
+
+  getRideById: async (id) => {
+    const res = await api.get(`/rides/${id}`);
+    return res.data.data;
   }
 };
 
