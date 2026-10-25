@@ -149,12 +149,53 @@ All payment features operate strictly in test/sandbox mode:
 
 ---
 
+## ⚡ Real-Time Architecture & Socket.IO Events
+
+The platform provides live GPS vehicle tracking, multi-participant trip messaging, and instant notification pushes via Socket.IO:
+
+### Handshake & Authentication
+- Socket connections authenticate using JWT access tokens provided in `handshake.auth.token`.
+- Connections without valid tokens or with expired tokens are rejected with standard error codes (`TOKEN_EXPIRED`, `UNAUTHORIZED`).
+- Each user automatically joins a private user room: `user:<userId>`.
+
+### Socket Events Reference
+| Event | Direction | Description |
+|---|---|---|
+| `trip:join` | Client → Server | Participant joins `trip:<tripId>` room. Validates driver/confirmed passenger role. Returns current trip snapshot and cached ETA. |
+| `driver:location` | Client → Server | Driver emits GPS coordinates (`{ tripId, lat, lng, speed, heading }`). Throttled to 1 update/3s. The first update transitions trip from `STARTED` to `IN_PROGRESS` atomically. |
+| `trip:location` | Server → Room | Broadcasts driver's latest location, heading, speed, and cached destination ETA to room `trip:<tripId>`. |
+| `trip:status` | Server → Room | Broadcasts lifecycle transitions (`STARTED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`). Automatically evicts sockets when the trip ends. |
+| `chat:send` | Client → Server | Sends message (`{ tripId, text }`). Rate-limited to 10 sends/10s. Company admins blocked. Sanitized and stored in MongoDB. |
+| `chat:message` | Server → Room | Broadcasts new message to `trip:<tripId>` room. If recipient is not in room, dispatches `notification:new`. |
+| `chat:read` | Client → Server | Marks unread messages in trip as read by current user. |
+| `notification:new` | Server → User | Pushes instant in-app notifications directly to `user:<userId>`. |
+
+---
+
+## 🧪 Development Tracking Simulator
+
+For local development and testing without physical driving:
+1. Ensure `NODE_ENV !== 'production'` and `ENABLE_TRACKING_SIMULATOR=true` in `server/.env`.
+2. Drivers on the Tracking Page (`/trips/:id/tracking`) can click **"Simulated tracking (development only)"**.
+3. Or invoke REST API:
+   ```bash
+   POST /api/dev/trips/:id/simulate-location
+   Authorization: Bearer <driver_token>
+   Content-Type: application/json
+   { "stepIndex": 0 }
+   ```
+4. The simulator walks sequentially along the trip's stored OSRM route geometry. All emitted locations carry `simulated: true`.
+5. This endpoint is strictly disabled in production mode.
+
+---
+
 ## 🔒 Security & Deployment Notes
 
 - **Cookies**: Refresh tokens are stored in `HttpOnly` cookies. In production, serve frontend and backend behind the same reverse proxy (or configure same-site domain) to ensure first-party cookie compliance.
-- **Geolocation**: Browser `navigator.geolocation` API requires an HTTPS connection outside `localhost`. Production domains must have SSL/TLS enabled.
-- **Input Validation**: All inbound requests are validated through Zod schemas.
-- **Data Isolation**: Organization scope middleware enforces strict tenant isolation on every database query.
+- **Geolocation & HTTPS**: Browser `navigator.geolocation` API requires an HTTPS connection outside `localhost`. Production deployments must have SSL/TLS configured.
+- **Admin Chat Privacy**: Company admins are strictly prohibited from viewing or sending chat messages between carpool participants.
+- **Input Validation**: All inbound requests and socket payloads are validated through Zod schemas and sanitizers.
+- **Data Isolation**: Organization scope middleware enforces strict tenant isolation on every database query and room.
 
 ---
 
@@ -221,5 +262,6 @@ Clicking or copying that URL navigates to the Reset Password interface where new
 ---
 
 ## ⚠️ Known Limitations
-- Current Phase: Phase 2 (Design System & Authentication) completed.
-- Upcoming Phase: Phase 3 (Data models, vehicles CRUD, maps, and offer-a-ride workflows).
+- Current Phase: Phase 5 (Real time: Socket.IO, live tracking, chat, notifications) completed.
+- Upcoming Phase: Phase 6 (Payments and wallet: Razorpay test checkout, wallet ledger, cash confirmation, driver earnings).
+

@@ -82,6 +82,22 @@ export function AuthProvider({ children }) {
     setUser((prev) => ({ ...prev, ...updatedUser }));
   };
 
+  const refreshAccessToken = useCallback(async () => {
+    try {
+      const res = await authApi.refresh();
+      if (res?.data?.accessToken && res?.data?.user) {
+        handleSetAccessToken(res.data.accessToken);
+        setUser(res.data.user);
+        return res.data.accessToken;
+      }
+      return null;
+    } catch (err) {
+      handleSetAccessToken(null);
+      setUser(null);
+      throw err;
+    }
+  }, [handleSetAccessToken]);
+
   const value = {
     user,
     accessToken,
@@ -92,11 +108,13 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    updateUser
+    updateUser,
+    refreshAccessToken
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
 
 export function useAuth() {
   const context = useContext(AuthContext);

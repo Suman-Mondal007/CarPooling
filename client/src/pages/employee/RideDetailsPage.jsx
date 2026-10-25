@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, MapPin, Clock, Users, IndianRupee, Car, User,
-  Minus, Plus, ShieldCheck, Loader2, AlertCircle, CheckCircle2
+  ArrowLeft, MapPin, Clock, Car, User,
+  Minus, Plus, ShieldCheck, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ridesApi from '../../api/rides.api.js';

@@ -1,32 +1,15 @@
 import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
 import app from './app.js';
 import env from './config/env.js';
 import { connectDB, disconnectDB } from './config/db.js';
 
+import { initializeSockets } from './sockets/index.js';
+
 const httpServer = http.createServer(app);
 
 // Socket.IO server setup
-export const io = new SocketIOServer(httpServer, {
-  cors: {
-    origin: env.CLIENT_URL,
-    credentials: true,
-    methods: ['GET', 'POST']
-  }
-});
+export const io = initializeSockets(httpServer);
 
-// Basic connection handler (extended in Phase 5)
-io.on('connection', (socket) => {
-  if (env.NODE_ENV !== 'test') {
-    console.log(`🔌 Socket connected: ${socket.id}`);
-  }
-
-  socket.on('disconnect', () => {
-    if (env.NODE_ENV !== 'test') {
-      console.log(`🔌 Socket disconnected: ${socket.id}`);
-    }
-  });
-});
 
 const startServer = async () => {
   try {

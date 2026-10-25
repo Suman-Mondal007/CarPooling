@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Calendar, Car, MapPin, Clock, Users, IndianRupee,
-  ArrowRight, Search, PlusCircle, Loader2, Filter
+  Calendar, Car, Clock, Users, IndianRupee,
+  ArrowRight, Search, PlusCircle, Navigation, MessageSquare
 } from 'lucide-react';
 import tripsApi from '../../api/trips.api.js';
 import Card from '../../components/common/Card.jsx';
 import Button from '../../components/common/Button.jsx';
 import Badge from '../../components/common/Badge.jsx';
 import EmptyState from '../../components/common/EmptyState.jsx';
-import { Skeleton } from '../../components/common/Skeleton.jsx';
 
 const TABS = [
   { key: 'upcoming', label: 'Upcoming', filter: { status: 'SCHEDULED' } },
@@ -20,7 +19,7 @@ const TABS = [
   { key: 'cancelled', label: 'Cancelled', filter: { status: 'CANCELLED' } }
 ];
 
-function getStatusBadge(status, isDriver) {
+function getStatusBadge(status) {
   const map = {
     SCHEDULED: { variant: 'blue', label: 'Scheduled' },
     STARTED: { variant: 'amber', label: 'Started' },
@@ -162,7 +161,6 @@ export function MyTripsPage() {
           {trips.map((trip) => {
             const ride = trip.ride;
             const departure = ride?.departureAt ? new Date(ride.departureAt) : null;
-            const isPast = departure && departure < new Date();
 
             return (
               <Card
@@ -250,8 +248,28 @@ export function MyTripsPage() {
                     </>
                   )}
 
-                  <div className="ml-auto">
-                    <span className="inline-flex items-center gap-1 text-teal-700 font-semibold hover:underline">
+                  <div className="ml-auto flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/trips/${trip._id}/tracking`);
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 text-xs font-semibold hover:bg-teal-100 transition"
+                    >
+                      <Navigation className="w-3 h-3" /> Track
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/chat?tripId=${trip._id}`);
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition"
+                    >
+                      <MessageSquare className="w-3 h-3" /> Chat
+                    </button>
+                    <span className="inline-flex items-center gap-1 text-slate-500 font-semibold text-xs ml-1">
                       Details <ArrowRight className="w-3 h-3" />
                     </span>
                   </div>

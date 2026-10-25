@@ -20,10 +20,14 @@ import {
   Bookmark
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useNotifications } from '../context/NotificationContext.jsx';
+import { useSocket } from '../hooks/useSocket.js';
 import Badge from '../components/common/Badge.jsx';
 
 export function EmployeeLayout() {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
+  const { status: socketStatus } = useSocket();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -100,6 +104,23 @@ export function EmployeeLayout() {
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* Real-time Connection Status Indicator */}
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200"
+              title={`Socket Status: ${socketStatus}`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  socketStatus === 'connected'
+                    ? 'bg-emerald-500'
+                    : socketStatus === 'reconnecting'
+                    ? 'bg-amber-500 animate-pulse'
+                    : 'bg-rose-500'
+                }`}
+              />
+              <span className="hidden md:inline capitalize">{socketStatus}</span>
+            </div>
+
             {/* Notifications Button */}
             <Link
               to="/notifications"
@@ -107,8 +128,13 @@ export function EmployeeLayout() {
               aria-label="View notifications"
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-teal-600 ring-2 ring-white"></span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-teal-600 text-white font-bold text-[10px] flex items-center justify-center ring-2 ring-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Link>
+
 
             {/* Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>

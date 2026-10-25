@@ -1,17 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import toast from 'react-hot-toast';
 import notificationsApi from '../api/notifications.api.js';
 import { useAuth } from './AuthContext.jsx';
+import { useSocket } from './SocketContext.jsx';
 
 const NotificationContext = createContext(null);
 
-const POLL_INTERVAL_MS = 30000; // 30 seconds
-
 export function NotificationProvider({ children }) {
   const { user } = useAuth();
+  const { socket, status } = useSocket();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
-  const intervalRef = useRef(null);
+  const prevStatusRef = useRef(status);
 
   const fetchUnreadCount = useCallback(async () => {
     if (!user) return;
@@ -19,7 +20,7 @@ export function NotificationProvider({ children }) {
       const data = await notificationsApi.getNotifications({ limit: 1, unreadOnly: 'true' });
       setUnreadCount(data?.unreadCount ?? 0);
     } catch {
-      // Silently fail - polling is best-effort
+      // Silently fail
     }
   }, [user]);
 
@@ -60,23 +61,51 @@ export function NotificationProvider({ children }) {
     }
   }, []);
 
-  // Start polling when user is authenticated
+  // Fetch on mount or when user changes
   useEffect(() => {
     if (user) {
       fetchUnreadCount();
-      intervalRef.current = setInterval(fetchUnreadCount, POLL_INTERVAL_MS);
+      fetchNotifications();
     } else {
       setUnreadCount(0);
       setNotifications([]);
     }
+  }, [user, fetchUnreadCount, fetchNotifications]);
+
+  // Re-fetch on socket reconnect
+  useEffect(() => {
+    if (user && status === 'connected' && prevStatusRef.current === 'reconnecting') {
+      fetchUnreadCount();
+      fetchNotifications();
+    }
+    prevStatusRef.current = status;
+  }, [status, user, fetchUnreadCount, fetchNotifications]);
+
+  // Real-time socket notification listener
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewNotification = (notification) => {
+      setUnreadCount((prev) => prev + 1);
+      setNotifications((prev) => [notification, ...prev]);
+
+      // Trigger user-friendly toast
+      toast(notification.title || 'New Notification', {
+        icon: '🔔',
+        style: {
+          borderRadius: '10px',
+          background: '#1e293b',
+          color: '#fff'
+        }
+      });
+    };
+
+    socket.on('notification:new', handleNewNotification);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      socket.off('notification:new', handleNewNotification);
     };
-  }, [user, fetchUnreadCount]);
+  }, [socket]);
 
   return (
     <NotificationContext.Provider

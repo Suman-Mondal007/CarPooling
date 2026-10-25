@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle2, Calendar, MapPin, Users, IndianRupee, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle2, Calendar, Users, IndianRupee, ArrowRight } from 'lucide-react';
 import bookingsApi from '../../api/bookings.api.js';
 import Card from '../../components/common/Card.jsx';
 import Button from '../../components/common/Button.jsx';

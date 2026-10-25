@@ -4,6 +4,8 @@ import Booking from '../models/Booking.js';
 import { getPassengerLifecycle } from '../utils/lifecycle.js';
 import { fromGeoJsonPoint } from '../utils/geo.js';
 import { notifyTripStarted, notifyTripCompleted } from '../services/notification.service.js';
+import { emitTripStatus } from '../sockets/emitter.js';
+import { getTripTrackingState } from '../services/tracking.service.js';
 
 export async function getMyTrips(req, res, next) {
   try {
@@ -57,7 +59,6 @@ export async function getMyTrips(req, res, next) {
       Trip.countDocuments(tripQuery)
     ]);
 
-    const tripIds = trips.map((t) => t._id);
     const rideIds = trips.map((t) => t.ride?._id).filter(Boolean);
 
     // Fetch user bookings on these rides
@@ -300,6 +301,9 @@ export async function startTrip(req, res, next) {
     // Notify all confirmed passengers
     notifyTripStarted(trip, confirmedBookings).catch(() => {});
 
+    // Broadcast trip status update to trip room
+    emitTripStatus(trip._id, 'STARTED', { message: 'Trip has started' });
+
     res.status(200).json({
       success: true,
       data: {
@@ -372,6 +376,9 @@ export async function completeTrip(req, res, next) {
     // Notify all confirmed passengers
     notifyTripCompleted(trip, confirmedBookings).catch(() => {});
 
+    // Broadcast trip status update and evict room sockets
+    emitTripStatus(trip._id, 'COMPLETED', { message: 'Trip has completed' });
+
     res.status(200).json({
       success: true,
       data: {
@@ -388,3 +395,17 @@ export async function completeTrip(req, res, next) {
     next(error);
   }
 }
+
+export async function getTripTracking(req, res, next) {
+  try {
+    const tracking = await getTripTrackingState(req.params.id, req.user._id, req.organization._id);
+    res.status(200).json({
+      success: true,
+      data: tracking,
+      error: null
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+

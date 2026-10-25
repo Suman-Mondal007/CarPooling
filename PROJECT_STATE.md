@@ -3,7 +3,7 @@
 ## 1. Project Overview
 - **Project**: Enterprise Carpooling Platform (MERN)
 - **Architecture**: Multi-tenant enterprise carpooling web application (React 18 + Express 4 + MongoDB + Socket.IO)
-- **Status**: Phase 3 (Data Models, Vehicles, Maps, Offer a Ride) Completed
+- **Status**: Phase 5 (Real-time: Socket.IO, Live Tracking, Chat, Notifications) Completed
 
 ---
 
@@ -105,6 +105,87 @@
   - 5 frontend tests passing (100%).
   - Linter: 0 errors, 0 warnings across all workspaces.
   - Production client build succeeds in 7.22s.
+
+### Phase 4: Find a Ride, Matching, Booking, Cancellation, My Trips & Transitions (Completed)
+- **Ride Matching Engine (`matching.service.js` & `GET /api/rides/search`)**:
+  - Multi-tenant query scoped to passenger organization.
+  - Pre-filtering using `2dsphere` spatial radius query around origin coordinates.
+  - Strict matching rules:
+    - Status must be `OPEN` and associated Trip must be `SCHEDULED`.
+    - Departure is strictly in the future and within user window (configurable default ±30 min).
+    - Available seats >= requested seats.
+    - Passenger is not the driver and has no conflicting `CONFIRMED` booking or offered ride at that time.
+    - Proximity validation: passenger pickup is within 2 km of stored route polyline, drop is within 2 km of stored route polyline, and pickup precedes drop along route direction index.
+  - Explainable composite ranking score based on pickup proximity, route deviation, time delta, and fare.
+- **Atomic Booking Reservation (`booking.service.js`, `booking.controller.js`)**:
+  - `POST /api/bookings`: Atomic reservation using atomic update `Ride.findOneAndUpdate({ _id, organization, status: 'OPEN', availableSeats: { $gte: seats }, departureAt: { $gt: now } }, { $inc: { availableSeats: -seats } })`.
+  - Compensating rollback ($inc seats back) if Booking model creation fails.
+  - Partial unique MongoDB index on `(ride, passenger)` where `status: 'CONFIRMED'` preventing duplicate simultaneous bookings.
+  - Recurring booking support (`POST /api/bookings/recurring`): books individual ride instances independently with per-instance success/failure reporting.
+  - In-app notification created for the driver upon booking confirmation.
+- **Cancellation Flow**:
+  - `POST /api/bookings/:id/cancel`: Passenger cancellation with organization cancellation cutoff enforcement (e.g. 60 minutes before departure). Atomically increments available seats on Ride.
+  - `POST /api/rides/:id/cancel`: Driver cancellation for `SCHEDULED` rides. Sets Ride and Trip status to `CANCELLED`, cascades cancellation to all active passenger bookings, and notifies affected passengers.
+- **My Trips (`GET /api/trips/my-trips`)**:
+  - Query filtering supporting: `all`, `upcoming`, `offered`, `booked`, `active`, `completed`, `cancelled`.
+  - Aggregates populated driver, vehicle, ride, passenger count, and user-specific passenger lifecycle status (`REQUESTED`, `BOOKED`, `PICKED_UP`, `COMPLETED`, `CANCELLED`).
+- **Trip Lifecycle Transitions (`PATCH /api/trips/:id/status`, `lifecycle.service.js`)**:
+  - Strict state machine: `SCHEDULED -> STARTED -> IN_PROGRESS -> COMPLETED` (or `CANCELLED`).
+  - Driver authorization verification.
+  - Validation: cannot start cancelled trips, cannot complete twice, cannot start without confirmed bookings (configurable org policy `allowStartWithoutPassengers`).
+  - On `COMPLETED`: transitions all confirmed bookings to `COMPLETED`, updates payment status to `UNPAID` (ready to pay), and triggers passenger notifications.
+- **Frontend Find & Booking UI**:
+  - `FindRidePage` (`/find-ride`): Commute search form with Leaflet map, address autocomplete, time window selection, seat picker, and weekday recurrence toggles.
+  - `RouteConfirmationPage` (`/find-ride/confirm-route`): Route verification preview with distance and duration before executing search.
+  - `AvailableRidesPage` (`/rides`): Displays matching rides list with driver details, verified badges, rating display, seat counters, price per seat, and route previews.
+  - `RideDetailsPage` (`/rides/:id`): Detailed ride itinerary, co-passenger count, vehicle specs, and seat booking modal.
+  - `BookingConfirmationPage` (`/booking-confirmation/:bookingId`): Server-confirmed reservation summary with direct link to My Trips.
+  - `MyTripsPage` (`/my-trips`): Tabbed management interface (Upcoming, Booked by me, Offered by me, Active, Completed, Cancelled) with action triggers (View Details, Cancel, Start Trip, Complete Trip).
+  - `TripDetailsPage` (`/trips/:id`): Deep trip management view with passenger manifest, vehicle verification status, lifecycle steppers, and cancellation modals.
+- **Verification**:
+  - 46 backend integration tests passing (100% across health, auth, phase 3, and phase 4 suites).
+  - Client production build succeeds in <6s with 0 errors.
+  - Monorepo lint passes.
+
+### Phase 5: Real-time: Socket.IO, Live Tracking, Chat, Notifications (Completed)
+- **Socket.IO Server & Authentication (`sockets/index.js`, `sockets/emitter.js`)**:
+  - Attached to HTTP server with CORS strictly configured to `CLIENT_URL`.
+  - JWT connection authentication (`io.use`) reading token from `handshake.auth.token`. Rejects missing, invalid, or non-`ACTIVE` users.
+  - Automatic private user room assignment: `user:<userId>`.
+  - Graceful token expiration handling with error codes enabling transparent client reconnection.
+- **Live GPS Tracking Engine (`sockets/tracking.socket.js`, `services/tracking.service.js`)**:
+  - Participant room authorization (`trip:join`): allows only driver or confirmed passengers within the same organization. Sends initial snapshot with last known location, timestamp, and ETA.
+  - Driver location broadcaster (`driver:location`): validates driver identity, active status (`STARTED` or `IN_PROGRESS`), coordinate validity (-90..90, -180..180).
+  - Rate throttling: enforces maximum 1 location update per 3 seconds per trip, silently dropping excess updates.
+  - State progression: first accepted driver location atomically advances trip status from `STARTED` to `IN_PROGRESS`, notifies passengers, and broadcasts `trip:status`.
+  - Stored coordinates in TTL collection (`TrackingPoint`) and updated on `Trip`.
+  - Stale detection: flags location as stale if no update received in 30 seconds.
+  - ETA calculation: calculated to destination via routing service, cached for 45 seconds to protect provider quotas; gracefully retains prior ETA marked stale on failure.
+  - Trip termination: broadcasts `trip:status` on `COMPLETED` and `CANCELLED`, evicting sockets from the trip room.
+  - Participant tracking snapshot: `GET /api/trips/:id/tracking`.
+- **In-Trip Real-Time Chat (`sockets/chat.socket.js`, `controllers/chat.controller.js`)**:
+  - Driver and confirmed passengers only; company admins strictly barred from chat content.
+  - Events: `chat:send` (validated: 1-1000 characters, trimmed, sanitized), `chat:message` (room broadcast), `chat:read` (read receipt sync).
+  - Rate-limited to 10 sends per 10 seconds per user.
+  - Read-only window: chat remains accessible for messaging until 24 hours after trip completion, then locks into read-only archive mode.
+  - REST endpoints: `GET /api/chat/conversations` (with unread counters) and `GET /api/trips/:id/messages` (paginated, chronological).
+- **Socket Notifications (`services/notification.service.js`)**:
+  - Real-time event push: creating a notification emits `notification:new` to `user:<userId>` room.
+  - Covers booking lifecycle, trip lifecycle transitions, and chat messages (when recipient is not in room).
+- **Development Tracking Simulator (`controllers/dev.controller.js`, `routes/dev.routes.js`)**:
+  - `POST /api/dev/trips/:id/simulate-location`: Driver-only endpoint walking route geometry with `simulated: true`.
+  - Strictly disabled when `NODE_ENV === 'production'` or `ENABLE_TRACKING_SIMULATOR !== 'true'`.
+- **Frontend Real-time Interface**:
+  - `SocketContext` & `useSocket`: Automatic connection management, token refresh handling, reconnection banners, and status badges.
+  - `TripTrackingPage` (`/trips/:id/tracking`): Animated driver marker, route polyline, destination ETA, lifecycle stepper, stale location warning (>30s), real `tel:` call link, and embedded chat drawer.
+  - Driver tracking controller: high-accuracy GPS watch position (`navigator.geolocation.watchPosition`) with user permission prompts, sharing indicators, and simulator trigger in development.
+  - `ChatPage` (`/chat`): Full-featured messaging view with conversation list, unread badges, auto-scroll thread, character counters, and read-only banners.
+  - Header notification bell: real-time badge updates and instant push toast alerts.
+- **Verification**:
+  - 68 backend integration tests passing (100% across health, auth, phase 3, phase 4, and phase 5 suites).
+  - 8 client component/route tests passing (100% including chat input validation and stale location warning).
+  - 0 ESLint errors and 0 warnings across all workspaces.
+  - Client production build succeeds in 6.46s.
 
 ---
 
@@ -231,12 +312,9 @@ Clicking or pasting that link navigates to `ResetPasswordPage.jsx` where the new
 ---
 
 ## 8. Next Step
-- **Phase 4 — Find a Ride and Booking**:
-  - Matching service: search rides with origin/destination proximity and pickup-before-drop verification along route geometry.
-  - Find a Ride UI: location search, route confirmation, available rides list with driver cards.
-  - Ride details and booking page.
-  - Atomic booking reservation (preventing overbooking, concurrent reservation safety).
-  - Cancellation rules (cancellation cutoff window, seat return).
-  - My Trips page with passenger and driver tabs.
-  - Trip execution transitions (SCHEDULED -> STARTED -> IN_PROGRESS -> COMPLETED).
-  - Concurrency tests for booking reservations.
+- **Phase 6 — Payments & Wallet**:
+  - Razorpay checkout integration (Sandbox/Test mode: cards, UPI, netbanking, wallet).
+  - Webhook verification with raw body HMAC-SHA256 signature validation.
+  - Internal wallet ledger: balance, recharge simulation, fare deductions, settlement transfers.
+  - Fallback simulated payment flow (`ALLOW_SIMULATED_PAYMENTS=true`) when sandbox keys are absent.
+  - Payment status lifecycle on Bookings: `UNPAID -> PENDING -> PAID` (or `FAILED`, `REFUNDED`).

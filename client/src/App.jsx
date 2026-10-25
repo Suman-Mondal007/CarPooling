@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { SocketProvider } from './context/SocketContext.jsx';
+import { NotificationProvider } from './context/NotificationContext.jsx';
 import { RideDraftProvider } from './context/RideDraftContext.jsx';
 import AppRoutes from './routes/AppRoutes.jsx';
 
@@ -9,9 +11,13 @@ export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <RideDraftProvider>
-          <AppRoutes />
-        </RideDraftProvider>
+        <SocketProvider>
+          <NotificationProvider>
+            <RideDraftProvider>
+              <AppRoutes />
+            </RideDraftProvider>
+          </NotificationProvider>
+        </SocketProvider>
         <Toaster
           position="top-right"
           toastOptions={{

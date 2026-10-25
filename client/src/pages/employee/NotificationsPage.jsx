@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Bell, CheckCheck, Check, Clock, Calendar, Car,
-  Users, IndianRupee, AlertCircle, Loader2
+  Bell, CheckCheck, Clock, Car,
+  Users, AlertCircle, Navigation, MessageSquare, IndianRupee
 } from 'lucide-react';
-import Card from '../../components/common/Card.jsx';
 import Button from '../../components/common/Button.jsx';
-import Badge from '../../components/common/Badge.jsx';
 import EmptyState from '../../components/common/EmptyState.jsx';
-import { Skeleton } from '../../components/common/Skeleton.jsx';
 import { useNotifications } from '../../context/NotificationContext.jsx';
 
 const TYPE_ICONS = {
   BOOKING_CREATED: Users,
   BOOKING_CANCELLED: AlertCircle,
   RIDE_CANCELLED: Car,
-  TRIP_STARTED: Car,
+  TRIP_STARTED: Navigation,
+  TRIP_IN_PROGRESS: Navigation,
   TRIP_COMPLETED: CheckCheck,
+  NEW_CHAT_MESSAGE: MessageSquare,
   PAYMENT_PENDING: IndianRupee,
   PAYMENT_COMPLETED: IndianRupee,
   GENERAL: Bell
@@ -26,11 +26,14 @@ const TYPE_COLORS = {
   BOOKING_CANCELLED: 'bg-rose-100 text-rose-700',
   RIDE_CANCELLED: 'bg-rose-100 text-rose-700',
   TRIP_STARTED: 'bg-amber-100 text-amber-700',
+  TRIP_IN_PROGRESS: 'bg-teal-100 text-teal-700',
   TRIP_COMPLETED: 'bg-emerald-100 text-emerald-700',
+  NEW_CHAT_MESSAGE: 'bg-blue-100 text-blue-700',
   PAYMENT_PENDING: 'bg-amber-100 text-amber-700',
   PAYMENT_COMPLETED: 'bg-emerald-100 text-emerald-700',
   GENERAL: 'bg-slate-100 text-slate-700'
 };
+
 
 function formatTimeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -45,6 +48,7 @@ function formatTimeAgo(dateStr) {
 }
 
 export function NotificationsPage() {
+  const navigate = useNavigate();
   const { notifications, loading, fetchNotifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -61,6 +65,22 @@ export function NotificationsPage() {
     await markAllAsRead();
     setMarkingAll(false);
   };
+
+  const handleClickNotification = (notif) => {
+    if (!notif.isRead) {
+      markAsRead(notif._id);
+    }
+    if (notif.type === 'NEW_CHAT_MESSAGE') {
+      navigate(`/chat?tripId=${notif.referenceId}`);
+    } else if (notif.type === 'TRIP_STARTED' || notif.type === 'TRIP_IN_PROGRESS') {
+      navigate(`/trips/${notif.referenceId}/tracking`);
+    } else if (notif.referenceModel === 'Trip' && notif.referenceId) {
+      navigate(`/trips/${notif.referenceId}`);
+    } else if (notif.referenceModel === 'Booking') {
+      navigate('/my-trips');
+    }
+  };
+
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -115,7 +135,7 @@ export function NotificationsPage() {
             return (
               <div
                 key={notif._id}
-                onClick={() => !notif.isRead && markAsRead(notif._id)}
+                onClick={() => handleClickNotification(notif)}
                 className={`flex items-start gap-3 p-4 rounded-2xl border transition cursor-pointer ${
                   notif.isRead
                     ? 'bg-white border-slate-200 hover:bg-slate-50'

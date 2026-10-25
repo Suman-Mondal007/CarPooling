@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
-  MapPin, Clock, Users, IndianRupee, Car, ArrowRight,
-  SortAsc, Search, Loader2, AlertCircle, ChevronDown, Star
+  Clock, Users, IndianRupee, Car, ArrowRight,
+  SortAsc, Search, AlertCircle, ChevronDown
 } from 'lucide-react';
 import ridesApi from '../../api/rides.api.js';
 import Card from '../../components/common/Card.jsx';
 import Button from '../../components/common/Button.jsx';
 import Badge from '../../components/common/Badge.jsx';
 import EmptyState from '../../components/common/EmptyState.jsx';
-import { Skeleton } from '../../components/common/Skeleton.jsx';
 
 function getScoreVariant(score) {
   if (score >= 80) return 'emerald';
@@ -50,7 +49,6 @@ export function AvailableRidesPage() {
   const navigate = useNavigate();
 
   const [rides, setRides] = useState([]);
-  const [groupedByDay, setGroupedByDay] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [total, setTotal] = useState(0);
@@ -70,7 +68,6 @@ export function AvailableRidesPage() {
     ridesApi.searchRides(params)
       .then((data) => {
         setRides(data.items || []);
-        setGroupedByDay(data.groupedByDay || {});
         setTotal(data.total || 0);
       })
       .catch((err) => {
@@ -86,8 +83,6 @@ export function AvailableRidesPage() {
     if (sortBy === 'seats') return (b.availableSeats || 0) - (a.availableSeats || 0);
     return 0;
   });
-
-  const hasRecurring = Object.keys(groupedByDay).length > 1;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

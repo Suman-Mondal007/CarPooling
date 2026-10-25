@@ -6,6 +6,7 @@ import Vehicle from '../models/Vehicle.js';
 import { toGeoJsonPoint, fromGeoJsonPoint } from '../utils/geo.js';
 import { searchMatchingRides } from '../services/matching.service.js';
 import { notifyRideCancelled } from '../services/notification.service.js';
+import { emitTripStatus } from '../sockets/emitter.js';
 
 function formatRide(ride) {
   const obj = ride.toObject ? ride.toObject() : { ...ride };
@@ -284,6 +285,8 @@ export async function cancelOfferedRide(req, res, next) {
 
     trip.status = 'CANCELLED';
     await trip.save();
+
+    emitTripStatus(trip._id, 'CANCELLED', { message: 'Ride was cancelled by driver' });
 
     // Cancel all active bookings on this ride and notify passengers
     const confirmedBookings = await Booking.find({ ride: ride._id, status: 'CONFIRMED' });

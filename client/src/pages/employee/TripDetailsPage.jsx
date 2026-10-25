@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Clock, Users, IndianRupee, Car, User,
   Play, CheckCircle2, XCircle, MessageSquare, Navigation,
-  CreditCard, AlertCircle, Loader2, Phone, Info
+  AlertCircle, Phone, Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import tripsApi from '../../api/trips.api.js';
@@ -15,6 +15,7 @@ import Badge from '../../components/common/Badge.jsx';
 import { ConfirmDialog } from '../../components/common/Modal.jsx';
 import RouteMap from '../../components/maps/RouteMap.jsx';
 import { Skeleton } from '../../components/common/Skeleton.jsx';
+import ChatPanel from '../../components/chat/ChatPanel.jsx';
 
 const LIFECYCLE_STEPS = [
   { code: 'RIDE_BOOKED', label: 'Ride Booked' },
@@ -94,8 +95,9 @@ export function TripDetailsPage() {
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [showCancelBookingDialog, setShowCancelBookingDialog] = useState(false);
   const [showCancelRideDialog, setShowCancelRideDialog] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
-  const fetchTrip = async () => {
+  const fetchTrip = useCallback(async () => {
     setLoading(true);
     try {
       const data = await tripsApi.getTripById(id);
@@ -105,9 +107,11 @@ export function TripDetailsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  useEffect(() => { fetchTrip(); }, [id]);
+  useEffect(() => {
+    fetchTrip();
+  }, [fetchTrip]);
 
   const handleStartTrip = async () => {
     setStartingTrip(true);
@@ -456,20 +460,66 @@ export function TripDetailsPage() {
                 </Button>
               )}
 
-              <PhaseNotice feature="Live Tracking" />
-              <PhaseNotice feature="Trip Chat" />
+              <Button
+                onClick={() => navigate(`/trips/${trip._id}/tracking`)}
+                className="w-full flex items-center justify-center gap-2"
+                size="md"
+                variant="outline"
+              >
+                <Navigation className="w-4 h-4 text-teal-600" /> Live Tracking
+              </Button>
+
+              <Button
+                onClick={() => setShowChat((prev) => !prev)}
+                className="w-full flex items-center justify-center gap-2"
+                size="md"
+                variant="outline"
+              >
+                <MessageSquare className="w-4 h-4 text-blue-600" /> {showChat ? 'Hide Trip Chat' : 'Trip Chat'}
+              </Button>
+
               <PhaseNotice feature="Pay for Trip" />
             </Card>
           )}
 
           {isDriver && (
             <Card className="space-y-3">
-              <PhaseNotice feature="Live Tracking" />
-              <PhaseNotice feature="Trip Chat" />
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Driver Tools</h3>
+              <Button
+                onClick={() => navigate(`/trips/${trip._id}/tracking`)}
+                className="w-full flex items-center justify-center gap-2"
+                size="md"
+                variant="outline"
+              >
+                <Navigation className="w-4 h-4 text-teal-600" /> Live Tracking Map
+              </Button>
+
+              <Button
+                onClick={() => setShowChat((prev) => !prev)}
+                className="w-full flex items-center justify-center gap-2"
+                size="md"
+                variant="outline"
+              >
+                <MessageSquare className="w-4 h-4 text-blue-600" /> {showChat ? 'Hide Trip Chat' : 'Trip Chat'}
+              </Button>
             </Card>
+          )}
+
+          {/* Embedded Chat Drawer */}
+          {showChat && (
+            <div className="mt-4">
+              <ChatPanel
+                tripId={trip._id}
+                isOpen={showChat}
+                onClose={() => setShowChat(false)}
+                isEmbedded={true}
+                title="Trip Chat"
+              />
+            </div>
           )}
         </div>
       </div>
+
 
       {/* Confirm Dialogs */}
       <ConfirmDialog

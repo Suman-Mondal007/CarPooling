@@ -17,6 +17,12 @@ import rideRoutes from './routes/ride.routes.js';
 import bookingRoutes from './routes/booking.routes.js';
 import tripRoutes from './routes/trip.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import chatRoutes from './routes/chat.routes.js';
+import devRoutes from './routes/dev.routes.js';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 
@@ -88,6 +94,24 @@ app.use('/api/rides', rideRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/dev', devRoutes);
+
+// OpenAPI Documentation endpoint
+try {
+  const openapiPaths = [
+    path.resolve(process.cwd(), 'openapi.yaml'),
+    path.resolve(process.cwd(), '../openapi.yaml'),
+    path.resolve(process.cwd(), 'server/openapi.yaml')
+  ];
+  const existingPath = openapiPaths.find((p) => fs.existsSync(p));
+  if (existingPath) {
+    const swaggerDocument = YAML.load(existingPath);
+    app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  }
+} catch (err) {
+  console.warn('⚠️ Could not load OpenAPI specification for /api/docs:', err.message);
+}
 
 // 404 handler
 app.use((req, res) => {

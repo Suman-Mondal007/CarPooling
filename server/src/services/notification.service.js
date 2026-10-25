@@ -1,4 +1,5 @@
 import Notification from '../models/Notification.js';
+import { emitToUser } from '../sockets/emitter.js';
 
 export async function createNotification({
   userId,
@@ -11,7 +12,7 @@ export async function createNotification({
   metadata = {}
 }) {
   try {
-    return await Notification.create({
+    const notification = await Notification.create({
       user: userId,
       organization: organizationId,
       type,
@@ -21,6 +22,11 @@ export async function createNotification({
       referenceModel,
       metadata
     });
+
+    // Real-time socket delivery to private user room
+    emitToUser(userId, 'notification:new', notification);
+
+    return notification;
   } catch (err) {
     console.error('Failed to create notification record:', err);
     return null;
@@ -85,6 +91,21 @@ export async function notifyTripStarted(trip, confirmedBookings = []) {
   return Promise.all(promises);
 }
 
+export async function notifyTripInProgress(trip, confirmedBookings = []) {
+  const promises = confirmedBookings.map((b) =>
+    createNotification({
+      userId: b.passenger,
+      organizationId: trip.organization,
+      type: 'TRIP_IN_PROGRESS',
+      title: 'Trip In Progress',
+      message: 'The car is now on the move! Live tracking is active.',
+      referenceId: trip._id,
+      referenceModel: 'Trip'
+    })
+  );
+  return Promise.all(promises);
+}
+
 export async function notifyTripCompleted(trip, confirmedBookings = []) {
   const promises = confirmedBookings.map((b) =>
     createNotification({
@@ -99,3 +120,29 @@ export async function notifyTripCompleted(trip, confirmedBookings = []) {
   );
   return Promise.all(promises);
 }
+
+export async function notifyNewChatMessage(trip, message, senderUser, recipientIds = []) {
+  const promises = recipientIds.map((userId) =>
+    createNotification({
+      userId,
+      organizationId: trip.organization,
+      type: 'NEW_CHAT_MESSAGE',
+      title: `Message from ${senderUser.name || 'Carpool participant'}`,
+      message: message.content.length > 80 ? `${message.content.substring(0, 80)}...` : message.content,
+      referenceId: trip._id,
+      referenceModel: 'Trip'
+    })
+  );
+  return Promise.all(promises);
+}
+
+export default {
+  createNotification,
+  notifyBookingCreated,
+  notifyBookingCancelled,
+  notifyRideCancelled,
+  notifyTripStarted,
+  notifyTripInProgress,
+  notifyTripCompleted,
+  notifyNewChatMessage
+};

@@ -32,7 +32,8 @@ const envSchema = z.object({
   SMTP_FROM: z.string().optional().default('noreply@carpooling.local'),
   SEED_ADMIN_EMAIL: z.string().email().default('admin@enterprise.local'),
   SEED_ADMIN_PASSWORD: z.string().min(8).default('Admin@Pass123'),
-  SEED_AUTO_APPROVE: z.preprocess((val) => typeof val === 'string' ? val.trim().toLowerCase() === 'true' : Boolean(val), z.boolean()).default(false)
+  SEED_AUTO_APPROVE: z.preprocess((val) => typeof val === 'string' ? val.trim().toLowerCase() === 'true' : Boolean(val), z.boolean()).default(false),
+  ENABLE_TRACKING_SIMULATOR: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(false)
 });
 
 let parsedEnv;

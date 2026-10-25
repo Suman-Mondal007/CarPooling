@@ -5,7 +5,9 @@ const NOTIFICATION_TYPES = [
   'BOOKING_CANCELLED',
   'RIDE_CANCELLED',
   'TRIP_STARTED',
+  'TRIP_IN_PROGRESS',
   'TRIP_COMPLETED',
+  'NEW_CHAT_MESSAGE',
   'PAYMENT_PENDING',
   'PAYMENT_COMPLETED',
   'RIDE_UPDATE',
@@ -57,7 +59,7 @@ const notificationSchema = new mongoose.Schema(
     },
     referenceModel: {
       type: String,
-      enum: ['Ride', 'Booking', 'Trip', 'Payment', 'Vehicle', null],
+      enum: ['Ride', 'Booking', 'Trip', 'Payment', 'Vehicle', 'Message', null],
       default: null
     }
   },

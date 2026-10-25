@@ -1,0 +1,145 @@
+openapi: 3.0.3
+info:
+  title: Enterprise Carpooling Platform API
+  version: 1.0.0
+  description: >
+    Production-grade enterprise multi-tenant carpooling API.
+    Supports JWT-based authentication, tenant isolation, ride matching,
+    atomic seat booking, real-time live tracking with Socket.IO, chat, and notifications.
+servers:
+  - url: http://localhost:5000/api
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: System status and database connectivity
+
+  /auth/login:
+    post:
+      summary: Authenticate user with credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Successfully authenticated; sets HttpOnly refresh cookie and returns access token
+
+  /trips/my:
+    get:
+      summary: Fetch user trips as driver or passenger
+      parameters:
+        - in: query
+          name: as
+            schema: { type: string, enum: [all, driver, passenger] }
+        - in: query
+          name: status
+            schema: { type: string, enum: [SCHEDULED, STARTED, IN_PROGRESS, COMPLETED, CANCELLED] }
+      responses:
+        '200':
+          description: Paginated list of trips
+
+  /trips/{id}/tracking:
+    get:
+      summary: Get live tracking snapshot for a trip (participants only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Tracking data including lastKnownLocation, eta, stale status, and route
+        '403':
+          description: Not authorized (participant check failed)
+
+  /trips/{id}/start:
+    post:
+      summary: Driver starts the trip
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Trip started; broadcasts trip:status STARTED
+
+  /trips/{id}/complete:
+    post:
+      summary: Driver completes the trip
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Trip completed; broadcasts trip:status COMPLETED and evicts sockets
+
+  /trips/{id}/messages:
+    get:
+      summary: Get paginated chat messages for a trip (driver and confirmed passengers only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: query
+          name: page
+            schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+            schema: { type: integer, default: 50 }
+      responses:
+        '200':
+          description: Chronological list of chat messages (newest last)
+        '403':
+          description: Forbidden for admins or non-participants
+
+  /chat/conversations:
+    get:
+      summary: List all active chat conversations for user
+      responses:
+        '200':
+          description: List of conversations with last message, unread count, and read-only status
+        '403':
+          description: Forbidden for admins
+
+  /notifications:
+    get:
+      summary: List user notifications
+      responses:
+        '200':
+          description: Paginated list of notifications
+
+  /dev/trips/{id}/simulate-location:
+    post:
+      summary: Driver development location simulator (disabled in production)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stepIndex: { type: integer }
+      responses:
+        '200':
+          description: Simulated location broadcast with simulated=true
+        '404':
+          description: Simulator disabled in production
