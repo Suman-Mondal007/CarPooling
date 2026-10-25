@@ -29,14 +29,23 @@ import SavedPlacesPage from '../pages/employee/SavedPlacesPage.jsx';
 import MyTripsPage from '../pages/employee/MyTripsPage.jsx';
 import TripDetailsPage from '../pages/employee/TripDetailsPage.jsx';
 import TripTrackingPage from '../pages/employee/TripTrackingPage.jsx';
+import PaymentPage from '../pages/employee/PaymentPage.jsx';
+import ReceiptPage from '../pages/employee/ReceiptPage.jsx';
+import WalletPage from '../pages/employee/WalletPage.jsx';
+import SettingsPage from '../pages/employee/SettingsPage.jsx';
 import ChatPage from '../pages/employee/ChatPage.jsx';
 import NotificationsPage from '../pages/employee/NotificationsPage.jsx';
+import RideHistoryPage from '../pages/employee/RideHistoryPage.jsx';
+import EmployeeReportsPage from '../pages/employee/EmployeeReportsPage.jsx';
+import HelpSupportPage from '../pages/employee/HelpSupportPage.jsx';
 
 // Admin Pages
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage.jsx';
-
-// Placeholder Component for future phases
-import PlaceholderPage from '../pages/PlaceholderPage.jsx';
+import AdminEmployeesPage from '../pages/admin/AdminEmployeesPage.jsx';
+import AdminVehiclesPage from '../pages/admin/AdminVehiclesPage.jsx';
+import AdminRidesPage from '../pages/admin/AdminRidesPage.jsx';
+import AdminReportsPage from '../pages/admin/AdminReportsPage.jsx';
+import AdminSettingsPage from '../pages/admin/AdminSettingsPage.jsx';
 
 export function AppRoutes() {
   return (
@@ -65,16 +74,17 @@ export function AppRoutes() {
           <Route path="/my-trips" element={<MyTripsPage />} />
           <Route path="/trips/:id" element={<TripDetailsPage />} />
           <Route path="/trips/:id/tracking" element={<TripTrackingPage />} />
-          <Route path="/trips/:id/pay" element={<PlaceholderPage title="Trip Payment" phase="Phase 6" description="Sandbox payment checkout via Razorpay card, UPI, cash, and digital wallet." />} />
-          <Route path="/wallet" element={<PlaceholderPage title="Digital Wallet" phase="Phase 6" description="Internal wallet ledger with simulated recharge and fare settlement." />} />
-          <Route path="/history" element={<PlaceholderPage title="Ride History" phase="Phase 7" description="Historical log of completed trips with search and filtering." />} />
+          <Route path="/trips/:id/pay" element={<PaymentPage />} />
+          <Route path="/payments/:id/receipt" element={<ReceiptPage />} />
+          <Route path="/wallet" element={<WalletPage />} />
+          <Route path="/history" element={<RideHistoryPage />} />
           <Route path="/saved-places" element={<SavedPlacesPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/reports" element={<PlaceholderPage title="Commute Reports" phase="Phase 7" description="Personalized travel statistics, cost savings, and fuel efficiency metrics." />} />
+          <Route path="/reports" element={<EmployeeReportsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/settings" element={<PlaceholderPage title="Account Settings" phase="Phase 7" />} />
-          <Route path="/help" element={<PlaceholderPage title="Help & Support" phase="Phase 7" />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/help" element={<HelpSupportPage />} />
         </Route>
       </Route>
 
@@ -82,11 +92,11 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute allowedRoles={['COMPANY_ADMIN']} />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminDashboardPage />} />
-          <Route path="/admin/employees" element={<PlaceholderPage title="Employee Administration" phase="Phase 7" description="Approve, suspend, and deactivate organization employees." />} />
-          <Route path="/admin/vehicles" element={<PlaceholderPage title="Vehicle Verification" phase="Phase 7" description="Inspect and verify employee vehicles before rides can be offered." />} />
-          <Route path="/admin/rides" element={<PlaceholderPage title="Ride Monitoring" phase="Phase 7" description="Read-only monitoring of all current and scheduled organization rides." />} />
-          <Route path="/admin/reports" element={<PlaceholderPage title="Organization Reports" phase="Phase 7" description="Aggregated fuel consumption, cost per km, and employee participation analytics." />} />
-          <Route path="/admin/settings" element={<PlaceholderPage title="Organization Settings" phase="Phase 7" description="Configure fuel prices, cancellation cutoffs, and registration codes." />} />
+          <Route path="/admin/employees" element={<AdminEmployeesPage />} />
+          <Route path="/admin/vehicles" element={<AdminVehiclesPage />} />
+          <Route path="/admin/rides" element={<AdminRidesPage />} />
+          <Route path="/admin/reports" element={<AdminReportsPage />} />
+          <Route path="/admin/settings" element={<AdminSettingsPage />} />
         </Route>
       </Route>
 

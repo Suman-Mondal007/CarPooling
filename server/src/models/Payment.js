@@ -8,10 +8,28 @@ const paymentSchema = new mongoose.Schema(
     booking: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Booking',
+      required: true
+    },
+    trip: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Trip',
       required: true,
       index: true
     },
+    passenger: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true
+    },
+    // Alias/backward-compatibility
     payer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true
+    },
+    driver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
@@ -20,7 +38,8 @@ const paymentSchema = new mongoose.Schema(
     organization: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Organization',
-      required: true
+      required: true,
+      index: true
     },
     amountMinor: {
       type: Number,
@@ -67,6 +86,10 @@ const paymentSchema = new mongoose.Schema(
       type: Date,
       default: null
     },
+    simulated: {
+      type: Boolean,
+      default: false
+    },
     isSeeded: {
       type: Boolean,
       default: false
@@ -81,6 +104,12 @@ const paymentSchema = new mongoose.Schema(
 paymentSchema.index(
   { booking: 1 },
   { unique: true, partialFilterExpression: { status: 'PAID' } }
+);
+
+// Only one active pending cash payment per booking
+paymentSchema.index(
+  { booking: 1 },
+  { unique: true, partialFilterExpression: { status: 'PENDING_CASH_CONFIRMATION' } }
 );
 
 export const Payment = mongoose.model('Payment', paymentSchema);

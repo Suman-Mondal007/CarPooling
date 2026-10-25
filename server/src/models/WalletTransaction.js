@@ -43,12 +43,11 @@ const walletTransactionSchema = new mongoose.Schema(
       default: ''
     },
     reference: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       default: null
     },
     referenceModel: {
       type: String,
-      enum: ['Payment', 'Booking', null],
       default: null
     },
     idempotencyKey: {
@@ -64,6 +63,7 @@ const walletTransactionSchema = new mongoose.Schema(
 
 // Append-only ledger — no updates allowed via application code
 walletTransactionSchema.index({ wallet: 1, createdAt: -1 });
+walletTransactionSchema.index({ user: 1, createdAt: -1 });
 
 export const WalletTransaction = mongoose.model('WalletTransaction', walletTransactionSchema);
 export { TRANSACTION_TYPES };

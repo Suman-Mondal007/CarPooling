@@ -17,7 +17,7 @@ vi.mock('../../api/auth.api.js', () => ({
 describe('LoginPage Form Validation', () => {
   it('renders login form elements properly', async () => {
     render(
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <LoginPage />
         </AuthProvider>
@@ -36,7 +36,7 @@ describe('LoginPage Form Validation', () => {
   it('displays validation errors on invalid submission', async () => {
     const user = userEvent.setup();
     render(
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <LoginPage />
         </AuthProvider>

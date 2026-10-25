@@ -15,7 +15,7 @@ describe('ProtectedRoute Navigation Guard', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/dashboard']}>
         <Routes>
           <Route path="/login" element={<div>Login Page Redirect Target</div>} />
           <Route element={<ProtectedRoute allowedRoles={['EMPLOYEE']} />}>
@@ -40,7 +40,7 @@ describe('ProtectedRoute Navigation Guard', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/dashboard']}>
         <Routes>
           <Route path="/login" element={<div>Login Page Redirect Target</div>} />
           <Route element={<ProtectedRoute allowedRoles={['EMPLOYEE']} />}>

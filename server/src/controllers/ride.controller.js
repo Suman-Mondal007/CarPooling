@@ -89,7 +89,15 @@ export async function publishRide(req, res, next) {
       availableSeats: data.totalPassengerSeats,
       farePerSeatMinor: data.farePerSeatMinor,
       notes: data.notes || '',
-      status: 'OPEN'
+      status: 'OPEN',
+      vehicleSnapshot: {
+        model: vehicle.model,
+        registrationNumber: vehicle.registrationNumber,
+        vehicleType: vehicle.vehicleType,
+        fuelType: vehicle.fuelType,
+        fuelEfficiencyKmpl: vehicle.fuelEfficiencyKmpl,
+        seatingCapacity: vehicle.seatingCapacity
+      }
     };
 
     // 4. Handle recurring or single ride

@@ -71,7 +71,7 @@ export function MapPicker({
       clearTimeout(debounceTimerRef.current);
     }
 
-    if (!query || query.trim().length < 3 || query === value?.address) {
+    if (!query || query.trim().length < 2 || query === value?.address) {
       setSearchResults([]);
       setIsSearching(false);
       return;
@@ -81,14 +81,14 @@ export function MapPicker({
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const results = await geoApi.search(query);
-        setSearchResults(results);
+        setSearchResults(Array.isArray(results) ? results : []);
         setShowDropdown(true);
       } catch {
         setSearchResults([]);
       } finally {
         setIsSearching(false);
       }
-    }, 650);
+    }, 300);
 
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -176,7 +176,7 @@ export function MapPicker({
               setShowDropdown(true);
             }}
             onFocus={() => {
-              if (searchResults.length > 0) setShowDropdown(true);
+              if ((searchResults || []).length > 0) setShowDropdown(true);
             }}
           />
           <div className="absolute inset-y-0 right-0 pr-1.5 flex items-center gap-1">
@@ -191,22 +191,32 @@ export function MapPicker({
           </div>
         </div>
 
-        {/* Autocomplete Dropdown */}
-        {showDropdown && searchResults.length > 0 && (
-          <ul className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100 text-sm">
-            {searchResults.map((item) => (
-              <li key={item.placeId}>
-                <button
-                  type="button"
-                  className="w-full text-left px-3.5 py-2.5 hover:bg-teal-50 flex items-start gap-2.5 text-slate-700 transition"
-                  onClick={() => handleSelectLocation(item.lat, item.lng, item.displayName)}
-                >
-                  <MapPin className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                  <span className="truncate">{item.displayName}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+        {/* Autocomplete Dropdown - Google Maps style */}
+        {showDropdown && (
+          <>
+            {isSearching && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs text-slate-500 flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+                <span>Searching locations...</span>
+              </div>
+            )}
+            {!isSearching && (searchResults || []).length > 0 && (
+              <ul className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100 text-sm">
+                {searchResults.map((item) => (
+                  <li key={item.placeId || `${item.lat}-${item.lng}`}>
+                    <button
+                      type="button"
+                      className="w-full text-left px-3.5 py-2.5 hover:bg-teal-50 flex items-start gap-2.5 text-slate-700 transition"
+                      onClick={() => handleSelectLocation(item.lat, item.lng, item.displayName)}
+                    >
+                      <MapPin className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                      <span className="truncate">{item.displayName}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </div>
 

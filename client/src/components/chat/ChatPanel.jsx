@@ -214,7 +214,7 @@ export function ChatPanel({
             return (
               <div
                 key={msg._id}
-                className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}
+                className={`flex flex-col animate-slide-up ${isMine ? 'items-end' : 'items-start'}`}
               >
                 {!isMine && (
                   <span className="text-[11px] font-medium text-slate-400 mb-1 ml-1 flex items-center gap-1">

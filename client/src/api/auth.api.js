@@ -58,6 +58,11 @@ export const authApi = {
   async getMyOrganization() {
     const res = await api.get('/api/organizations/me');
     return res.data;
+  },
+
+  async updatePaymentPreference(preferredPaymentMethod) {
+    const res = await api.patch('/api/users/me/payment-preference', { preferredPaymentMethod });
+    return res.data;
   }
 };
 

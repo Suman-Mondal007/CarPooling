@@ -43,8 +43,11 @@ const destIcon = new L.DivIcon({
 
 const carIcon = new L.DivIcon({
   className: 'custom-pin-car',
-  html: `<div style="background-color: #0ea5e9; width: 34px; height: 34px; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.5); display: flex; align-items: center; justify-content: center; color: white;">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+  html: `<div style="position: relative; display: flex; align-items: center; justify-content: center;">
+    <div class="marker-pulse-ring" style="position: absolute; width: 34px; height: 34px; border-radius: 50%;"></div>
+    <div style="background-color: #0ea5e9; width: 34px; height: 34px; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.5); display: flex; align-items: center; justify-content: center; color: white; position: relative; z-index: 2;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+    </div>
   </div>`,
   iconSize: [34, 34],
   iconAnchor: [17, 17]
@@ -618,8 +621,10 @@ export function TripTrackingPage() {
                 return (
                   <div key={step.key} className="flex items-center gap-3">
                     <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                        isPassed
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                        isCurrent
+                          ? 'animate-badge-pop bg-teal-500 text-slate-950 ring-4 ring-teal-500/25 shadow-sm'
+                          : isPassed
                           ? 'bg-teal-500 text-slate-950'
                           : 'bg-slate-800 text-slate-500 border border-slate-700'
                       }`}

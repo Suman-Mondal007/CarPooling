@@ -261,7 +261,19 @@ Clicking or copying that URL navigates to the Reset Password interface where new
 
 ---
 
-## ⚠️ Known Limitations
-- Current Phase: Phase 5 (Real time: Socket.IO, live tracking, chat, notifications) completed.
-- Upcoming Phase: Phase 6 (Payments and wallet: Razorpay test checkout, wallet ledger, cash confirmation, driver earnings).
+---
+
+## 🎨 UI Polish & Motion Design System
+
+The platform includes a cohesive, lightweight motion system:
+- **Motion Tokens**: Centralized in `client/src/index.css` covering standard durations (150ms fast, 250ms base, 400ms slow), custom cubic-bezier easings, soft elevation shadows, and micro-keyframes.
+- **Micro-Interactions**: Active press scales (`active:scale-[0.97]`), hover lifts, stable-width loading spinners, and submit-error shakes.
+- **Transitions**: Native-like top progress bar on navigation, route fade-in transitions, and IntersectionObserver-powered scroll reveals.
+- **Live Features**: Continuous interpolated vehicle movement on Leaflet maps without abrupt jumping, live marker pulse rings, and real-time chat message slide-up animations.
+- **Accessibility**: Full adherence to `prefers-reduced-motion` globally disabling animations for users sensitive to motion.
+
+---
+
+## ⚠️ Status & Phases
+- **Current Status**: Phase 9 (UI Polish and Micro-Interactions) Completed. All core features (Authentication, Vehicles, Saved Places, Ride Matching, Bookings, Real-Time Tracking, Chat, Razorpay & Digital Wallet, Ride History, Reports, and Admin Management) are fully functional with passing test suites across client and server.
 

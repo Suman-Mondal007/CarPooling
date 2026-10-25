@@ -163,10 +163,14 @@ export function SavedPlacesPage() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {places.map((place) => {
+          {places.map((place, idx) => {
             const TypeIcon = place.placeType === 'HOME' ? Home : place.placeType === 'OFFICE' ? Building2 : MapPin;
             return (
-              <Card key={place._id} className="flex flex-col justify-between">
+              <Card
+                key={place._id}
+                hover
+                className={`flex flex-col justify-between animate-slide-up stagger-${Math.min(idx + 1, 5)}`}
+              >
                 <div>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">

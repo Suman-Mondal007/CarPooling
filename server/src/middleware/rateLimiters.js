@@ -35,7 +35,24 @@ export const passwordResetLimiter = rateLimit({
   }
 });
 
+export const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isTest ? 10000 : 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    data: null,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many payment requests, please try again later.',
+      details: null
+    }
+  }
+});
+
 export default {
   authLimiter,
-  passwordResetLimiter
+  passwordResetLimiter,
+  paymentLimiter
 };

@@ -24,14 +24,15 @@ const envSchema = z.object({
   GEO_USER_AGENT: z.string().min(1).default('CarpoolingPlatform/1.0 (contact@carpooling.local)'),
   RAZORPAY_KEY_ID: z.string().optional().default(''),
   RAZORPAY_KEY_SECRET: z.string().optional().default(''),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional().default(''),
   ALLOW_SIMULATED_PAYMENTS: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
   SMTP_HOST: z.string().optional().default(''),
   SMTP_PORT: z.coerce.number().optional().default(587),
   SMTP_USER: z.string().optional().default(''),
   SMTP_PASS: z.string().optional().default(''),
   SMTP_FROM: z.string().optional().default('noreply@carpooling.local'),
-  SEED_ADMIN_EMAIL: z.string().email().default('admin@enterprise.local'),
-  SEED_ADMIN_PASSWORD: z.string().min(8).default('Admin@Pass123'),
+  SEED_ADMIN_EMAIL: z.string().email().default('admin@gmail.com'),
+  SEED_ADMIN_PASSWORD: z.string().min(8).default('admin@007'),
   SEED_AUTO_APPROVE: z.preprocess((val) => typeof val === 'string' ? val.trim().toLowerCase() === 'true' : Boolean(val), z.boolean()).default(false),
   ENABLE_TRACKING_SIMULATOR: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(false)
 });
@@ -47,6 +48,10 @@ try {
     process.exit(1);
   }
   throw error;
+}
+
+if ((!parsedEnv.RAZORPAY_KEY_ID || !parsedEnv.RAZORPAY_KEY_SECRET) && !parsedEnv.ALLOW_SIMULATED_PAYMENTS && parsedEnv.NODE_ENV !== 'test') {
+  console.warn('⚠️ [Payment Gateway Warning]: RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is missing and ALLOW_SIMULATED_PAYMENTS is disabled. Online payments will return 503.');
 }
 
 export const env = parsedEnv;

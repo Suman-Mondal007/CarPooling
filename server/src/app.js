@@ -19,6 +19,9 @@ import tripRoutes from './routes/trip.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import devRoutes from './routes/dev.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
+import walletRoutes from './routes/wallet.routes.js';
+import historyRoutes from './routes/history.routes.js';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import path from 'path';
@@ -34,8 +37,21 @@ app.use(cors({
   origin: env.CLIENT_URL,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Idempotency-Key']
 }));
+
+// Raw body parser for webhook signature verification (mounted before express.json)
+app.use('/api/payments/webhook', express.raw({ type: '*/*' }), (req, res, next) => {
+  if (Buffer.isBuffer(req.body)) {
+    req.rawBody = req.body.toString('utf8');
+    try {
+      req.body = JSON.parse(req.rawBody);
+    } catch {
+      // Keep as string if not valid JSON
+    }
+  }
+  next();
+});
 
 // Request parsers
 app.use(cookieParser());
@@ -96,6 +112,9 @@ app.use('/api/trips', tripRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/dev', devRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/history', historyRoutes);
 
 // OpenAPI Documentation endpoint
 try {

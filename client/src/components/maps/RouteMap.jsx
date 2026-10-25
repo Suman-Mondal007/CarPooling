@@ -93,7 +93,7 @@ export function RouteMap({
 
       {/* Floating Route Distance & Duration Overlay */}
       {showMetricsOverlay && (distanceKm !== undefined || durationMinutes !== undefined) && (
-        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-lg shadow-md border border-slate-200/80 flex items-center gap-4 text-xs font-semibold text-slate-800 z-1000">
+        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl shadow-md border border-slate-200/80 flex items-center gap-4 text-xs font-semibold text-slate-800 z-1000 animate-slide-down">
           {distanceKm !== undefined && (
             <div className="flex items-center gap-1.5 text-slate-700">
               <Navigation2 className="w-3.5 h-3.5 text-teal-600" />

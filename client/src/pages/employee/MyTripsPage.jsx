@@ -33,15 +33,18 @@ function getStatusBadge(status) {
 
 function TripCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3 animate-pulse">
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3 shadow-2xs">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-slate-200" />
-          <div className="space-y-2"><div className="h-4 bg-slate-200 rounded w-32" /><div className="h-3 bg-slate-200 rounded w-20" /></div>
+          <div className="w-10 h-10 rounded-full animate-shimmer" />
+          <div className="space-y-2">
+            <div className="h-4 animate-shimmer rounded w-32" />
+            <div className="h-3 animate-shimmer rounded w-20" />
+          </div>
         </div>
-        <div className="h-6 bg-slate-200 rounded-full w-20" />
+        <div className="h-6 animate-shimmer rounded-full w-20" />
       </div>
-      <div className="h-12 bg-slate-100 rounded-lg" />
+      <div className="h-12 animate-shimmer rounded-lg" />
     </div>
   );
 }
@@ -158,7 +161,7 @@ export function MyTripsPage() {
       {/* Trip Cards */}
       {!loading && trips.length > 0 && (
         <div className="space-y-3">
-          {trips.map((trip) => {
+          {trips.map((trip, idx) => {
             const ride = trip.ride;
             const departure = ride?.departureAt ? new Date(ride.departureAt) : null;
 
@@ -167,7 +170,7 @@ export function MyTripsPage() {
                 key={trip._id}
                 hover
                 onClick={() => navigate(`/trips/${trip._id}`)}
-                className="relative"
+                className={`relative animate-slide-up stagger-${Math.min(idx + 1, 5)}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -269,6 +272,18 @@ export function MyTripsPage() {
                     >
                       <MessageSquare className="w-3 h-3" /> Chat
                     </button>
+                    {trip.status === 'COMPLETED' && trip.myBooking && trip.myBooking.paymentStatus !== 'PAID' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/trips/${trip._id}/pay`);
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition shadow-sm"
+                      >
+                        <IndianRupee className="w-3 h-3" /> Pay ₹{trip.myBooking.fareTotalRupees}
+                      </button>
+                    )}
                     <span className="inline-flex items-center gap-1 text-slate-500 font-semibold text-xs ml-1">
                       Details <ArrowRight className="w-3 h-3" />
                     </span>

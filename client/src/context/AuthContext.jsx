@@ -4,6 +4,8 @@ import { setAccessToken, onAuthFailure } from '../api/axios.js';
 
 const AuthContext = createContext(null);
 
+let inFlightRestore = null;
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [accessToken, setTokenState] = useState(null);
@@ -31,7 +33,12 @@ export function AuthProvider({ children }) {
 
     const restoreSession = async () => {
       try {
-        const res = await authApi.refresh();
+        if (!inFlightRestore) {
+          inFlightRestore = authApi.refresh().finally(() => {
+            inFlightRestore = null;
+          });
+        }
+        const res = await inFlightRestore;
         if (isMounted && res?.data?.accessToken && res?.data?.user) {
           handleSetAccessToken(res.data.accessToken);
           setUser(res.data.user);

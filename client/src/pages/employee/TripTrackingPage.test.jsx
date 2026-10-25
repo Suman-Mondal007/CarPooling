@@ -62,7 +62,7 @@ vi.mock('../../components/chat/ChatPanel.jsx', () => ({
 describe('TripTrackingPage - Stale Location Warning', () => {
   it('renders stale location warning banner when lastLocationAt is older than 30 seconds', async () => {
     render(
-      <MemoryRouter initialEntries={['/trips/trip_123/tracking']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/trips/trip_123/tracking']}>
         <Routes>
           <Route path="/trips/:id/tracking" element={<TripTrackingPage />} />
         </Routes>

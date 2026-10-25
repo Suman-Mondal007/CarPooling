@@ -87,6 +87,10 @@ const vehicleSchema = new mongoose.Schema(
       enum: { values: VERIFICATION_STATUSES, message: 'Invalid verification status' },
       default: 'PENDING'
     },
+    rejectionReason: {
+      type: String,
+      default: null
+    },
     isDeleted: {
       type: Boolean,
       default: false

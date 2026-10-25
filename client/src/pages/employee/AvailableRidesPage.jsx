@@ -26,19 +26,19 @@ function getScoreLabel(score) {
 
 function RideCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 animate-pulse">
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-2xs">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-slate-200" />
+        <div className="w-10 h-10 rounded-full animate-shimmer" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 bg-slate-200 rounded w-1/3" />
-          <div className="h-3 bg-slate-200 rounded w-1/4" />
+          <div className="h-4 animate-shimmer rounded w-1/3" />
+          <div className="h-3 animate-shimmer rounded w-1/4" />
         </div>
-        <div className="h-6 bg-slate-200 rounded-full w-16" />
+        <div className="h-6 animate-shimmer rounded-full w-16" />
       </div>
-      <div className="h-16 bg-slate-100 rounded-xl" />
+      <div className="h-16 animate-shimmer rounded-xl" />
       <div className="flex justify-between">
-        <div className="h-4 bg-slate-200 rounded w-20" />
-        <div className="h-8 bg-slate-200 rounded-xl w-24" />
+        <div className="h-4 animate-shimmer rounded w-20" />
+        <div className="h-8 animate-shimmer rounded-xl w-24" />
       </div>
     </div>
   );
@@ -99,7 +99,7 @@ export function AvailableRidesPage() {
               <SortAsc className="w-3.5 h-3.5" /> Sort <ChevronDown className="w-3 h-3" />
             </Button>
             {showSort && (
-              <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-30">
+              <div className="absolute right-0 mt-1 w-44 bg-white rounded-2xl shadow-xl border border-slate-200 py-1 z-30 animate-scale-in origin-top-right">
                 {[
                   { key: 'score', label: 'Best Match' },
                   { key: 'fare', label: 'Lowest Fare' },
@@ -109,7 +109,7 @@ export function AvailableRidesPage() {
                   <button
                     key={opt.key}
                     onClick={() => { setSortBy(opt.key); setShowSort(false); }}
-                    className={`w-full text-left px-4 py-2 text-xs hover:bg-slate-50 ${sortBy === opt.key ? 'font-semibold text-teal-700 bg-teal-50' : 'text-slate-700'}`}
+                    className={`w-full text-left px-4 py-2 text-xs hover:bg-slate-50 transition-colors ${sortBy === opt.key ? 'font-semibold text-teal-700 bg-teal-50' : 'text-slate-700'}`}
                   >
                     {opt.label}
                   </button>
@@ -156,7 +156,7 @@ export function AvailableRidesPage() {
       {/* Results */}
       {!loading && !error && sortedRides.length > 0 && (
         <div className="space-y-4">
-          {sortedRides.map((ride) => {
+          {sortedRides.map((ride, idx) => {
             const departure = new Date(ride.departureAt);
             const score = ride.match?.score || 0;
 
@@ -165,7 +165,7 @@ export function AvailableRidesPage() {
                 key={ride._id}
                 hover
                 onClick={() => navigate(`/rides/${ride._id}?${searchParams.toString()}`)}
-                className="relative overflow-hidden"
+                className={`relative overflow-hidden animate-slide-up stagger-${Math.min(idx + 1, 5)}`}
               >
                 <div className="flex items-start justify-between gap-4">
                   {/* Driver info */}

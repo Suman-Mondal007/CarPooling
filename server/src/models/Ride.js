@@ -120,6 +120,15 @@ const rideSchema = new mongoose.Schema(
       maxlength: 500,
       default: ''
     },
+    // Vehicle snapshot at publish time — survives vehicle soft-delete
+    vehicleSnapshot: {
+      model: { type: String, default: '' },
+      registrationNumber: { type: String, default: '' },
+      vehicleType: { type: String, default: '' },
+      fuelType: { type: String, default: '' },
+      fuelEfficiencyKmpl: { type: Number, default: 0 },
+      seatingCapacity: { type: Number, default: 0 }
+    },
     status: {
       type: String,
       enum: { values: RIDE_STATUSES, message: 'Invalid ride status' },

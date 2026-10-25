@@ -3,7 +3,7 @@
 ## 1. Project Overview
 - **Project**: Enterprise Carpooling Platform (MERN)
 - **Architecture**: Multi-tenant enterprise carpooling web application (React 18 + Express 4 + MongoDB + Socket.IO)
-- **Status**: Phase 5 (Real-time: Socket.IO, Live Tracking, Chat, Notifications) Completed
+- **Status**: Phase 9 (UI Polish and Micro-Interactions) Completed
 
 ---
 
@@ -187,6 +187,93 @@
   - 0 ESLint errors and 0 warnings across all workspaces.
   - Client production build succeeds in 6.46s.
 
+### Phase 6: Payments and Wallet (Sandbox Only) (Completed)
+- **Rules & Principles**:
+  - Never process real money. Every payment/wallet screen shows a visible "Test mode, no real money" banner.
+  - All currency is integer paise (minor units). The server determines payment amounts from `booking.fareTotalMinor`; client amounts are strictly ignored.
+  - All balance changes use single-document atomic updates (`findOneAndUpdate`) with unique idempotency keys without depending on MongoDB multi-document transactions.
+  - Driver earnings: non-cash payments credit the driver's wallet with an `EARNING` ledger entry for full fare (0% commission).
+- **Backend Architecture & Services**:
+  - Gateway Abstraction: `RazorpayGateway` (Razorpay SDK test mode) and `SimulatedGateway` (when keys absent & `ALLOW_SIMULATED_PAYMENTS=true`). Returns HTTP 503 `PAYMENTS_NOT_CONFIGURED` if keys are missing and simulation is disabled.
+  - Verification Security: Timing-safe HMAC-SHA256 signature verification (`crypto.timingSafeEqual`) for both checkout signatures and webhook callbacks.
+  - Atomic Ledger & Consistency: `getOrCreateWallet`, `checkLedgerConsistency`, `executeWalletPayment`, `creditDriverEarning`, `rechargeWallet`. Invariant verified: `balanceMinor === sum(ledger entries)`.
+  - Concurrency Lock: Pre-locking payment attempts using unique index on `Payment.idempotencyKey` prevents duplicate debits or race conditions during simultaneous requests.
+  - Cash Settlement Flow: Passenger requests `PENDING_CASH_CONFIRMATION` (or cancels); driver confirms physical receipt (`PAID`); cash makes zero wallet movement.
+  - Razorpay Webhooks: Raw body parser mounted on `/api/payments/webhook` with `RAZORPAY_WEBHOOK_SECRET` validation.
+  - Endpoints:
+    - Payments: `POST /api/payments/create-order`, `POST /api/payments/verify`, `POST /api/payments/wallet-pay`, `POST /api/payments/cash`, `POST /api/payments/:id/cancel-cash`, `POST /api/payments/:id/cash-confirmation`, `POST /api/payments/webhook`, `GET /api/payments/my`, `GET /api/payments/:id`.
+    - Wallet: `GET /api/wallet`, `GET /api/wallet/transactions`, `POST /api/wallet/recharge`, `POST /api/wallet/recharge/verify`, `POST /api/wallet/simulate-recharge`.
+    - Preferences: `PATCH /api/users/me/payment-preference`.
+- **Frontend Payment & Wallet UI**:
+  - `PaymentPage` (`/trips/:id/pay`): Fare breakdown, Test Mode banner, method selector (Wallet, Card, UPI, Cash) preselecting user's saved preference, insufficient wallet balance warning with recharge link, Razorpay checkout.js dynamic loader, and simulated payment modal.
+  - `ReceiptPage` (`/payments/:id/receipt`): Printable/PDF receipt card with status badge, amount, method, timestamp, gateway reference, route details, and driver/passenger info.
+  - `WalletPage` (`/wallet`): Balance card, driver earnings summary, transaction ledger with type filter tabs (All, Recharges, Payments, Earnings), and recharge modal (presets ₹100/₹200/₹500/₹1000, custom input ₹10–₹10,000, and simulated instant recharge).
+  - `SettingsPage` (`/settings`): Preferred payment method configuration.
+  - `TripDetailsPage`: Integrated "Pay Fare" button for completed trips, "View Receipt" button for paid trips, and driver "Pending Cash Confirmations" card with instant confirmation actions.
+  - `DashboardPage` & `MyTripsPage`: Real-time wallet balance widget and quick Pay links on completed trips.
+- **Verification**:
+  - 93 backend tests passing (100% across all 6 test suites, including 25 Phase 6 tests).
+  - 10 client unit tests passing (100%, including PaymentPage method selection and insufficient wallet balance tests).
+  - 0 ESLint errors and 0 warnings across monorepo.
+  - Client production build succeeds in <5s.
+
+### Phase 7: Ride History, Settings, Administration & Reports (Completed)
+- **Backend Architecture & Services**:
+  - `GET /api/history`: Full ride history for drivers and passengers with location search, multi-filters (role, status, paymentStatus), sorting, and pagination. Survives vehicle deletion through immutable `vehicleSnapshot` data on `Ride`.
+  - Customer Support: `POST /api/users/support` (rate-limited, ticket number generated, category validation) and `GET /api/users/support/my`.
+  - Employee Analytics: `GET /api/users/reports` showing personal travel distance, fuel consumption estimate, and estimated savings compared to solo driving.
+  - Admin Role Isolation & Monitoring:
+    - `GET /api/admin/summary`: Live KPI count cards for pending approvals, vehicles, rides today, and monthly trips.
+    - `GET /api/admin/employees` & `PATCH /api/admin/employees/:id/status`: Employee approval, suspension, deactivation, and reactivation with session invalidation, socket disconnection, and cascaded future ride/booking cancellations.
+    - `GET /api/admin/vehicles` & `POST /api/admin/vehicles/:id/verify`: Admin inspection, verification, and rejection with rejection reason.
+    - `GET /api/admin/rides`: Read-only operational overview with privacy protection (company admins strictly prohibited from reading private participant chat).
+    - `GET|PATCH /api/admin/settings` & `POST /api/admin/settings/regenerate-code`: Dynamic organization settings (fuel pricing, operational cost, cancellation cutoff, registration code regeneration).
+    - `GET /api/admin/reports`: Organization travel analytics, fuel consumption calculation, vehicle-wise cost analysis, and CSV export streaming (`format=csv`).
+- **Frontend Management & Reports Interface**:
+  - `RideHistoryPage` (`/history`): Search, filters, sort, pagination, desktop table, and mobile card views.
+  - `EmployeeReportsPage` (`/reports`): Personal travel distance, cost savings, and fuel stats with date-range filters.
+  - `HelpSupportPage` (`/help`): FAQ accordion, support ticket submission form, and user ticket tracking.
+  - `SettingsPage` (`/settings`): Profile editing, notification toggles, default payment selector, password change, and section navigation shortcuts.
+  - `AdminDashboardPage` (`/admin`): Live summary tiles linking directly to administrative workflows.
+  - `AdminEmployeesPage` (`/admin/employees`): Employee administration with search, status filters, and confirmation modals.
+  - `AdminVehiclesPage` (`/admin/vehicles`): Vehicle verification queue with specs, registration formatting, and rejection reasons.
+  - `AdminRidesPage` (`/admin/rides`): Read-only organization ride monitoring with itinerary inspection dialog.
+  - `AdminReportsPage` (`/admin/reports`): Interactive Recharts charts (monthly trips and fuel/pkm trend), summary KPI tiles, vehicle-wise cost table, and CSV download.
+  - `AdminSettingsPage` (`/admin/settings`): Organization configuration form with access code regeneration modal.
+  - `AppRoutes.jsx`: Connected all employee and admin Phase 7 routes replacing all placeholders.
+- **Verification**:
+  - 113 backend integration tests passing (100% across all 7 test suites, including 20 Phase 7 tests).
+  - 11 client unit tests passing (100%, including RideHistoryPage responsive tests).
+  - Production client build succeeds in 14.8s with 0 errors.
+
+### Phase 9: UI Polish and Micro-Interactions (Completed)
+- **Motion Design System & Tokens (`client/src/index.css`)**:
+  - Centralized CSS variables: durations (`--duration-fast: 150ms`, `--duration-base: 250ms`, `--duration-slow: 400ms`), custom easing curves (`--ease-out`, `--ease-in-out`, `--ease-spring`), elevation shadows (`--shadow-rest`, `--shadow-hover`, `--shadow-active`), and standardized border-radii.
+  - Reusable keyframes & utility classes: `fadeIn` (`.animate-fade-in`), `slideUp` (`.animate-slide-up`), `slideDown` (`.animate-slide-down`), `scaleIn` (`.animate-scale-in`), `shimmer` (`.animate-shimmer`), `pulseSoft` (`.animate-pulse-soft`), `pulseRing` (`.animate-pulse-ring`), `shake` (`.animate-shake`), `badgePop` (`.animate-badge-pop`), `bellRing` (`.animate-bell-ring`), `floatGentle` (`.animate-float`), and staggered delay helpers (`.stagger-1` to `.stagger-5`).
+  - Strict accessibility: Global `@media (prefers-reduced-motion: reduce)` resets all transitions and animations to 0.01ms. Text selection matching the teal brand and subtle modern webkit scrollbars.
+- **Shared Motion & Transition Components (`client/src/components/common/`)**:
+  - `ScrollToTop.jsx`: Automatically and silently resets window scroll on route changes (`pathname`) with jsdom fallback.
+  - `TopProgressBar.jsx`: Ultra-lightweight top-pinned accent progress bar for instant route transition feedback.
+  - `RevealOnScroll.jsx`: IntersectionObserver component providing scroll reveal with staggered card entrance.
+  - `AnimatedNumber.jsx`: High-performance requestAnimationFrame count-up helper with cubic easing, reduced-motion fallback, and guaranteed exact formatted final value.
+  - `Avatar.jsx`: Deterministic initials badge palette with image error fallback and smooth fade-in.
+- **Component & Layout Polish**:
+  - `Button.jsx`: Smooth hover lift (`hover:-translate-y-0.5`), active press (`active:scale-[0.97]`), focus ring, and stable loading state preserving button dimensions without layout shifts.
+  - `Input.jsx`: Animated focus border and ring, smooth collapsible error message reveal, and submit-with-error shake.
+  - `Card.jsx`: Hover lift with soft shadow growth, active scale, and selected teal boundary ring. Dashboard CTA cards with accent gradient glows and arrow translate nudges.
+  - `Modal.jsx`: Smooth backdrop fade and modal window scale-in entrance.
+  - `Skeleton.jsx`: Updated from basic opacity pulsing to high-fidelity gradient sweep shimmer (`.animate-shimmer`), plus `SkeletonTableRows` for tabular interfaces.
+  - `EmptyState.jsx`: Floating illustrative badge entrance.
+  - `EmployeeLayout.jsx` & `AdminLayout.jsx`: Scroll-reactive sticky header shadow (`isScrolled`), profile dropdown scale-and-fade in, notification bell badge-pop and hover bell-ring, and route transition fade wrappers.
+  - `TripTrackingPage.jsx` & Leaflet Maps: Smooth Leaflet vehicle marker translation via CSS transform cubic-bezier curve, live marker pulse ring, live indicator soft pulses, and trip stepper pop.
+  - Data Visualizations: Recharts enabled with `isAnimationActive={true}`, `animationDuration={800}`, `animationEasing="ease-out"`, styled dark tooltips, and numeric count-ups via `AnimatedNumber`.
+- **Verification & Performance**:
+  - 113 backend tests passing (100% across all 7 test suites).
+  - 11 frontend tests passing (100% across all 7 test suites).
+  - ESLint: 0 errors, 0 warnings across all workspaces.
+  - Production bundle impact: CSS +10.25 kB (+1.68 kB gzip), JS +11.19 kB (+3.26 kB gzip) — under 5 kB gzipped addition with zero heavy third-party animation libraries.
+  - Browser walkthrough verified on desktop (1280px) and mobile (375px) with zero layout shifts.
+
 ---
 
 ## 3. Key Architectural Decisions
@@ -312,9 +399,8 @@ Clicking or pasting that link navigates to `ResetPasswordPage.jsx` where the new
 ---
 
 ## 8. Next Step
-- **Phase 6 — Payments & Wallet**:
-  - Razorpay checkout integration (Sandbox/Test mode: cards, UPI, netbanking, wallet).
-  - Webhook verification with raw body HMAC-SHA256 signature validation.
-  - Internal wallet ledger: balance, recharge simulation, fare deductions, settlement transfers.
-  - Fallback simulated payment flow (`ALLOW_SIMULATED_PAYMENTS=true`) when sandbox keys are absent.
-  - Payment status lifecycle on Bookings: `UNPAID -> PENDING -> PAID` (or `FAILED`, `REFUNDED`).
+- **Phase 7 — Admin Dashboard, Management, Reports & Polish**:
+  - Company Admin dashboard: employee verification, vehicle approval, ride monitoring, organization policies.
+  - Analytics & Reports: carbon offset tracking, cost savings, fuel efficiency metrics, commute statistics.
+  - Ride history with advanced filtering and search.
+  - Final end-to-end polish and production deployment readiness.

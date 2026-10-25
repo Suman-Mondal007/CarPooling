@@ -22,16 +22,16 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4 text-center">
-        {/* Backdrop */}
+        {/* Backdrop Fade */}
         <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-fade-in"
           onClick={onClose}
           aria-hidden="true"
         />
 
-        {/* Modal Window */}
+        {/* Modal Window: scale-and-fade in */}
         <div
-          className={`relative w-full ${maxWidth} transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-xl transition-all border border-slate-200 z-10`}
+          className={`relative w-full ${maxWidth} transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-2xl transition-all border border-slate-200 z-10 animate-scale-in`}
           role="dialog"
           aria-modal="true"
         >
@@ -39,7 +39,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' 
             <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 rounded-lg p-1 transition-colors"
+              className="text-slate-400 hover:text-slate-600 rounded-lg p-1 transition-colors active:scale-95 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />

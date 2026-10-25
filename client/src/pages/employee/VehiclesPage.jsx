@@ -123,13 +123,17 @@ export function VehiclesPage() {
         });
         toast.success('Vehicle updated successfully');
       } else {
-        await vehiclesApi.createVehicle({
+        const newVehicle = await vehiclesApi.createVehicle({
           ...formData,
           registrationNumber: formData.registrationNumber.replace(/[\s-]/g, '').toUpperCase(),
           seatingCapacity: Number(formData.seatingCapacity),
           fuelEfficiencyKmpl: Number(formData.fuelEfficiencyKmpl)
         });
-        toast.success('Vehicle added successfully');
+        if (newVehicle?.verificationStatus === 'PENDING') {
+          toast.success('Vehicle registered! Pending admin verification.');
+        } else {
+          toast.success('Vehicle added successfully!');
+        }
       }
       setIsModalOpen(false);
       loadVehicles();
@@ -198,8 +202,12 @@ export function VehiclesPage() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {vehicles.map((v) => (
-            <Card key={v._id} className="relative overflow-hidden flex flex-col justify-between">
+          {vehicles.map((v, idx) => (
+            <Card
+              key={v._id}
+              hover
+              className={`relative overflow-hidden flex flex-col justify-between animate-slide-up stagger-${Math.min(idx + 1, 5)}`}
+            >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div>

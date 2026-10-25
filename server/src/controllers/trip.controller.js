@@ -216,6 +216,7 @@ export async function getTripById(req, res, next) {
               dropAddress: myBooking.dropAddress,
               pickupCoords: fromGeoJsonPoint(myBooking.pickupPoint),
               dropCoords: fromGeoJsonPoint(myBooking.dropPoint),
+              fareTotalMinor: myBooking.fareTotalMinor || 0,
               fareTotalRupees: myBooking.fareTotalMinor ? myBooking.fareTotalMinor / 100 : 0
             }
           : null,
@@ -223,10 +224,16 @@ export async function getTripById(req, res, next) {
       };
     }
 
+    const driverObj = obj.ride?.driver && typeof obj.ride.driver === 'object'
+      ? obj.ride.driver
+      : (typeof obj.driver === 'object' ? obj.driver : { _id: obj.driver });
+
     res.status(200).json({
       success: true,
       data: {
         ...obj,
+        driver: driverObj,
+        bookings: isDriver ? allBookings : (myBooking ? [myBooking] : []),
         isDriver,
         passengers: passengersResponse,
         lifecycle

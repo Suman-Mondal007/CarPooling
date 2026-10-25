@@ -55,6 +55,17 @@ const userSchema = new mongoose.Schema(
     licenceExpiry: {
       type: Date
     },
+    preferredPaymentMethod: {
+      type: String,
+      enum: ['CASH', 'CARD', 'UPI', 'WALLET', null],
+      default: null
+    },
+    notificationPreferences: {
+      bookings: { type: Boolean, default: true },
+      tripUpdates: { type: Boolean, default: true },
+      chat: { type: Boolean, default: true },
+      payments: { type: Boolean, default: true }
+    },
     passwordResetTokenHash: {
       type: String,
       select: false

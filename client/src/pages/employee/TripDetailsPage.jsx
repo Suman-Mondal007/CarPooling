@@ -3,12 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Clock, Users, IndianRupee, Car, User,
   Play, CheckCircle2, XCircle, MessageSquare, Navigation,
-  AlertCircle, Phone, Info
+  AlertCircle, Phone, Banknote, Wallet, Receipt
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import tripsApi from '../../api/trips.api.js';
 import ridesApi from '../../api/rides.api.js';
 import bookingsApi from '../../api/bookings.api.js';
+import paymentsApi from '../../api/payments.api.js';
 import Card from '../../components/common/Card.jsx';
 import Button from '../../components/common/Button.jsx';
 import Badge from '../../components/common/Badge.jsx';
@@ -67,15 +68,6 @@ function LifecycleStepper({ lifecycle }) {
   );
 }
 
-function PhaseNotice({ feature }) {
-  return (
-    <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-      <Info className="w-4 h-4 shrink-0" />
-      <span><strong>{feature}</strong> — Available in a later phase</span>
-    </div>
-  );
-}
-
 export function TripDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -89,6 +81,9 @@ export function TripDetailsPage() {
   const [completingTrip, setCompletingTrip] = useState(false);
   const [cancellingBooking, setCancellingBooking] = useState(false);
   const [cancellingRide, setCancellingRide] = useState(false);
+  const [confirmingCashId, setConfirmingCashId] = useState(null);
+  const [pendingCashPayments, setPendingCashPayments] = useState([]);
+  const [paidPaymentId, setPaidPaymentId] = useState(null);
 
   // Dialogs
   const [showStartDialog, setShowStartDialog] = useState(false);
@@ -102,6 +97,31 @@ export function TripDetailsPage() {
     try {
       const data = await tripsApi.getTripById(id);
       setTrip(data);
+
+      // Fetch payment info
+      if (data.isDriver) {
+        try {
+          const paymentsRes = await paymentsApi.getMyPayments({ role: 'driver' });
+          const pending = (paymentsRes.data?.items || []).filter(
+            (p) => (p.trip?._id === id || p.trip === id) && p.status === 'PENDING_CASH_CONFIRMATION'
+          );
+          setPendingCashPayments(pending);
+        } catch {
+          // Ignore
+        }
+      } else {
+        try {
+          const paymentsRes = await paymentsApi.getMyPayments({ role: 'passenger' });
+          const match = (paymentsRes.data?.items || []).find(
+            (p) => (p.trip?._id === id || p.trip === id) && p.status === 'PAID'
+          );
+          if (match) {
+            setPaidPaymentId(match._id);
+          }
+        } catch {
+          // Ignore
+        }
+      }
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to load trip');
     } finally {
@@ -168,6 +188,19 @@ export function TripDetailsPage() {
       toast.error(err.response?.data?.error?.message || 'Failed to cancel ride');
     } finally {
       setCancellingRide(false);
+    }
+  };
+
+  const handleConfirmCashPayment = async (paymentId) => {
+    try {
+      setConfirmingCashId(paymentId);
+      await paymentsApi.confirmCashPayment(paymentId);
+      toast.success('Cash payment confirmed! Trip marked paid.');
+      await fetchTrip();
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed to confirm cash payment');
+    } finally {
+      setConfirmingCashId(null);
     }
   };
 
@@ -478,31 +511,94 @@ export function TripDetailsPage() {
                 <MessageSquare className="w-4 h-4 text-blue-600" /> {showChat ? 'Hide Trip Chat' : 'Trip Chat'}
               </Button>
 
-              <PhaseNotice feature="Pay for Trip" />
+              {status === 'COMPLETED' && myBooking && (
+                myBooking.paymentStatus === 'PAID' ? (
+                  <Button
+                    onClick={() => navigate(`/payments/${paidPaymentId || ''}/receipt`)}
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2 text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100"
+                    size="md"
+                  >
+                    <Receipt className="w-4 h-4" /> View Payment Receipt
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => navigate(`/trips/${trip._id}/pay`)}
+                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/20"
+                    size="md"
+                  >
+                    <IndianRupee className="w-4 h-4" /> Pay Fare (₹{myBooking.fareTotalRupees})
+                  </Button>
+                )
+              )}
             </Card>
           )}
 
           {isDriver && (
-            <Card className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Driver Tools</h3>
-              <Button
-                onClick={() => navigate(`/trips/${trip._id}/tracking`)}
-                className="w-full flex items-center justify-center gap-2"
-                size="md"
-                variant="outline"
-              >
-                <Navigation className="w-4 h-4 text-teal-600" /> Live Tracking Map
-              </Button>
+            <>
+              {pendingCashPayments.length > 0 && (
+                <Card className="space-y-3 border-amber-300 bg-amber-50/50">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-800 uppercase tracking-wider">
+                    <Banknote className="w-4 h-4 text-amber-600" /> Pending Cash ({pendingCashPayments.length})
+                  </div>
+                  <div className="space-y-2">
+                    {pendingCashPayments.map((p) => (
+                      <div
+                        key={p._id}
+                        className="p-3 bg-white rounded-xl border border-amber-200 flex items-center justify-between"
+                      >
+                        <div>
+                          <p className="text-xs font-semibold text-slate-800">
+                            {p.passenger?.name || 'Passenger'}
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            ₹{((p.amountMinor || 0) / 100).toFixed(2)} cash on drop
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleConfirmCashPayment(p._id)}
+                          disabled={confirmingCashId === p._id}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                        >
+                          {confirmingCashId === p._id ? 'Confirming...' : 'Confirm Received'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
 
-              <Button
-                onClick={() => setShowChat((prev) => !prev)}
-                className="w-full flex items-center justify-center gap-2"
-                size="md"
-                variant="outline"
-              >
-                <MessageSquare className="w-4 h-4 text-blue-600" /> {showChat ? 'Hide Trip Chat' : 'Trip Chat'}
-              </Button>
-            </Card>
+              <Card className="space-y-3">
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Driver Tools</h3>
+                <Button
+                  onClick={() => navigate(`/trips/${trip._id}/tracking`)}
+                  className="w-full flex items-center justify-center gap-2"
+                  size="md"
+                  variant="outline"
+                >
+                  <Navigation className="w-4 h-4 text-teal-600" /> Live Tracking Map
+                </Button>
+
+                <Button
+                  onClick={() => setShowChat((prev) => !prev)}
+                  className="w-full flex items-center justify-center gap-2"
+                  size="md"
+                  variant="outline"
+                >
+                  <MessageSquare className="w-4 h-4 text-blue-600" /> {showChat ? 'Hide Trip Chat' : 'Trip Chat'}
+                </Button>
+
+                <Button
+                  onClick={() => navigate('/wallet')}
+                  className="w-full flex items-center justify-center gap-2"
+                  size="md"
+                  variant="outline"
+                >
+                  <Wallet className="w-4 h-4 text-purple-600" /> My Wallet & Earnings
+                </Button>
+              </Card>
+            </>
           )}
 
           {/* Embedded Chat Drawer */}

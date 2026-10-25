@@ -143,3 +143,347 @@ paths:
           description: Simulated location broadcast with simulated=true
         '404':
           description: Simulator disabled in production
+
+  /payments/create-order:
+    post:
+      summary: Create online gateway order for card or UPI payment
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bookingId]
+              properties:
+                bookingId: { type: string }
+                method: { type: string, enum: [CARD, UPI], default: CARD }
+      responses:
+        '201':
+          description: Order created with server-decided fareTotalMinor
+        '503':
+          description: Payments not configured
+
+  /payments/verify:
+    post:
+      summary: Cryptographically verify online gateway payment signature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [razorpay_order_id, razorpay_payment_id, razorpay_signature]
+              properties:
+                razorpay_order_id: { type: string }
+                razorpay_payment_id: { type: string }
+                razorpay_signature: { type: string }
+      responses:
+        '200':
+          description: Payment verified, booking marked PAID, driver wallet credited
+
+  /payments/wallet-pay:
+    post:
+      summary: Direct atomic payment from internal digital wallet
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bookingId]
+              properties:
+                bookingId: { type: string }
+      responses:
+        '200':
+          description: Wallet balance debited, driver credited with EARNING entry
+        '400':
+          description: Insufficient wallet balance
+
+  /payments/cash:
+    post:
+      summary: Passenger selects cash payment awaiting driver confirmation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bookingId]
+              properties:
+                bookingId: { type: string }
+      responses:
+        '200':
+          description: Pending cash confirmation record created
+
+  /payments/{id}/cancel-cash:
+    post:
+      summary: Passenger cancels pending cash confirmation to switch methods
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Cash request cancelled and booking reset to UNPAID
+
+  /payments/{id}/cash-confirmation:
+    post:
+      summary: Trip driver confirms physical cash received (driver only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Cash confirmed, booking marked PAID (zero wallet movement)
+
+  /payments/webhook:
+    post:
+      summary: Razorpay webhook callback with HMAC signature verification
+      responses:
+        '200':
+          description: Webhook processed
+
+  /payments/my:
+    get:
+      summary: Get paginated payment history as passenger or driver
+      parameters:
+        - in: query
+          name: role
+          schema: { type: string, enum: [passenger, driver] }
+      responses:
+        '200':
+          description: List of payment records
+
+  /payments/{id}:
+    get:
+      summary: Get detailed payment receipt (passenger or driver only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Payment receipt with trip and route details
+
+  /wallet:
+    get:
+      summary: Get current user wallet balance and currency
+      responses:
+        '200':
+          description: Wallet details
+
+  /wallet/transactions:
+    get:
+      summary: Get paginated wallet transaction ledger with optional type filter
+      parameters:
+        - in: query
+          name: type
+          schema: { type: string, enum: [RECHARGE, PAYMENT, EARNING] }
+      responses:
+        '200':
+          description: Transaction history
+
+  /wallet/recharge:
+    post:
+      summary: Create gateway order to recharge wallet (min ₹10, max ₹10,000)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amountMinor]
+              properties:
+                amountMinor: { type: integer, minimum: 1000, maximum: 1000000 }
+      responses:
+        '201':
+          description: Recharge order created
+
+  /wallet/recharge/verify:
+    post:
+      summary: Verify recharge payment and credit wallet ledger
+      responses:
+        '200':
+          description: Wallet recharged
+
+  /wallet/simulate-recharge:
+    post:
+      summary: Fast simulated sandbox recharge (dev/test only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amountMinor]
+              properties:
+                amountMinor: { type: integer, minimum: 1000, maximum: 1000000 }
+      responses:
+        '200':
+          description: Wallet balance credited
+
+  /history:
+    get:
+      summary: Get user completed and cancelled trip history (driver and passenger)
+      parameters:
+        - in: query
+          name: role
+            schema: { type: string, enum: [all, driver, passenger] }
+        - in: query
+          name: status
+            schema: { type: string, enum: [all, COMPLETED, CANCELLED] }
+        - in: query
+          name: search
+            schema: { type: string }
+        - in: query
+          name: page
+            schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+            schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: Historical trip logs with vehicle snapshots
+
+  /users/support:
+    post:
+      summary: Create customer support ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject, message, category]
+              properties:
+                subject: { type: string }
+                message: { type: string }
+                category: { type: string, enum: [ACCOUNT, RIDES, PAYMENTS, VEHICLES, TECHNICAL, OTHER] }
+      responses:
+        '201':
+          description: Support request created
+
+  /users/reports:
+    get:
+      summary: Get personal commute and cost savings reports
+      responses:
+        '200':
+          description: Stats as driver and as passenger
+
+  /admin/summary:
+    get:
+      summary: Organization administrative high-level overview
+      responses:
+        '200':
+          description: Pending approvals, vehicles, rides today, trips this month
+
+  /admin/employees:
+    get:
+      summary: List organization employees
+      responses:
+        '200':
+          description: List of employees with verification details
+
+  /admin/employees/{id}/status:
+    patch:
+      summary: Update employee account status (approve, suspend, deactivate, reactivate)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [ACTIVE, SUSPENDED, DEACTIVATED] }
+                reason: { type: string }
+      responses:
+        '200':
+          description: Status updated and notifications triggered
+
+  /admin/vehicles:
+    get:
+      summary: List organization employee vehicles
+      responses:
+        '200':
+          description: Vehicles with verification states and specs
+
+  /admin/vehicles/{id}/verify:
+    post:
+      summary: Verify or reject employee vehicle
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [VERIFIED, REJECTED] }
+                reason: { type: string }
+      responses:
+        '200':
+          description: Verification status updated
+
+  /admin/rides:
+    get:
+      summary: Read-only organization ride monitoring
+      responses:
+        '200':
+          description: List of organization rides and trip statuses
+
+  /admin/reports:
+    get:
+      summary: Organization travel analytics, fuel consumption, and CSV export
+      parameters:
+        - in: query
+          name: format
+            schema: { type: string, enum: [json, csv] }
+      responses:
+        '200':
+          description: Analytics summary and vehicle-wise cost analysis
+
+  /admin/settings:
+    get:
+      summary: Get organization settings and registration code
+      responses:
+        '200':
+          description: Organization policies and configuration
+    patch:
+      summary: Update organization settings
+      responses:
+        '200':
+          description: Settings updated
+
+  /admin/settings/regenerate-code:
+    post:
+      summary: Invalidate old and generate new registration code
+      responses:
+        '200':
+          description: New registration code generated
+
+

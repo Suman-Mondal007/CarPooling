@@ -48,7 +48,7 @@ export const seed = async () => {
     const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
 
     const admin = await User.create({
-      name: 'Alice Admin',
+      name: 'Admin',
       email: env.SEED_ADMIN_EMAIL.toLowerCase(),
       phone: '+919876500000',
       passwordHash: adminPasswordHash,
@@ -59,50 +59,6 @@ export const seed = async () => {
       isSeeded: true
     });
 
-    // 3. Create 3 Sample Active Employees
-    const employeeDefaultPassword = 'Employee@Pass123';
-    const employeePasswordHash = await bcrypt.hash(employeeDefaultPassword, 10);
-
-    const employees = await User.create([
-      {
-        name: 'Priya Sharma',
-        email: 'priya.sharma@enterprise.local',
-        phone: '+919876500001',
-        passwordHash: employeePasswordHash,
-        role: 'EMPLOYEE',
-        organization: org._id,
-        employeeId: 'EMP-101',
-        status: 'ACTIVE',
-        licenceNumber: 'KA0120220001234',
-        licenceExpiry: new Date('2032-05-15'),
-        isSeeded: true
-      },
-      {
-        name: 'Rahul Verma',
-        email: 'rahul.verma@enterprise.local',
-        phone: '+919876500002',
-        passwordHash: employeePasswordHash,
-        role: 'EMPLOYEE',
-        organization: org._id,
-        employeeId: 'EMP-102',
-        status: 'ACTIVE',
-        licenceNumber: 'KA0320210005678',
-        licenceExpiry: new Date('2030-11-20'),
-        isSeeded: true
-      },
-      {
-        name: 'Sneha Patel',
-        email: 'sneha.patel@enterprise.local',
-        phone: '+919876500003',
-        passwordHash: employeePasswordHash,
-        role: 'EMPLOYEE',
-        organization: org._id,
-        employeeId: 'EMP-103',
-        status: 'ACTIVE',
-        isSeeded: true
-      }
-    ]);
-
     console.log('\n================================================================');
     console.log('🎉 SEEDING COMPLETED SUCCESSFULLY!');
     console.log('================================================================');
@@ -111,18 +67,14 @@ export const seed = async () => {
     console.log(`⚙️ Auto Approve Setting : ${autoApprove ? 'ENABLED' : 'DISABLED'}`);
     console.log('----------------------------------------------------------------');
     console.log('👤 COMPANY ADMINISTRATOR:');
+    console.log(`   Name     : ${admin.name}`);
     console.log(`   Email    : ${admin.email}`);
     console.log(`   Password : ${adminPassword}`);
     console.log(`   Role     : ${admin.role}`);
-    console.log('----------------------------------------------------------------');
-    console.log('👥 SAMPLE EMPLOYEES (Password for all: ' + employeeDefaultPassword + '):');
-    employees.forEach((emp, i) => {
-      console.log(`   ${i + 1}. ${emp.name.padEnd(16)} | Email: ${emp.email.padEnd(30)} | ID: ${emp.employeeId} | Status: ${emp.status}`);
-    });
     console.log('================================================================\n');
 
     await disconnectDB();
-    return { org, admin, employees };
+    return { org, admin, employees: [] };
   } catch (error) {
     console.error('❌ Seeding failed:', error);
     await disconnectDB();

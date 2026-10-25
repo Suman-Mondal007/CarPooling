@@ -6,10 +6,14 @@ import { SocketProvider } from './context/SocketContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
 import { RideDraftProvider } from './context/RideDraftContext.jsx';
 import AppRoutes from './routes/AppRoutes.jsx';
+import ScrollToTop from './components/common/ScrollToTop.jsx';
+import TopProgressBar from './components/common/TopProgressBar.jsx';
 
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <ScrollToTop />
+      <TopProgressBar />
       <AuthProvider>
         <SocketProvider>
           <NotificationProvider>
@@ -50,3 +54,8 @@ export function App() {
 }
 
 export default App;
+
+
+
+// 9FqILQK67f6lhzCn
+

@@ -1,5 +1,29 @@
 import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 import { emitToUser } from '../sockets/emitter.js';
+
+// Map notification types to preference categories.
+// Types NOT listed here are always delivered (critical).
+const TYPE_TO_PREF = {
+  BOOKING_CREATED: 'bookings',
+  TRIP_STARTED: 'tripUpdates',
+  TRIP_IN_PROGRESS: 'tripUpdates',
+  TRIP_COMPLETED: 'tripUpdates',
+  NEW_CHAT_MESSAGE: 'chat',
+  PAYMENT_PENDING: 'payments',
+  PAYMENT_COMPLETED: 'payments',
+  EMPLOYEE_APPROVED: 'bookings',
+  VEHICLE_VERIFIED: 'bookings',
+  VEHICLE_REJECTED: 'bookings',
+  GENERAL: 'bookings'
+};
+
+// Critical types that bypass user preferences entirely
+const CRITICAL_TYPES = new Set([
+  'BOOKING_CANCELLED',
+  'RIDE_CANCELLED',
+  'EMPLOYEE_SUSPENDED'
+]);
 
 export async function createNotification({
   userId,
@@ -12,6 +36,17 @@ export async function createNotification({
   metadata = {}
 }) {
   try {
+    // Check user notification preferences (skip for critical types)
+    if (!CRITICAL_TYPES.has(type)) {
+      const prefKey = TYPE_TO_PREF[type];
+      if (prefKey) {
+        const user = await User.findById(userId).select('notificationPreferences').lean();
+        if (user?.notificationPreferences && user.notificationPreferences[prefKey] === false) {
+          return null; // User opted out of this category
+        }
+      }
+    }
+
     const notification = await Notification.create({
       user: userId,
       organization: organizationId,
@@ -136,6 +171,43 @@ export async function notifyNewChatMessage(trip, message, senderUser, recipientI
   return Promise.all(promises);
 }
 
+export async function notifyPaymentPending(booking, trip, passenger, driver) {
+  return createNotification({
+    userId: driver._id || driver,
+    organizationId: trip.organization,
+    type: 'PAYMENT_PENDING',
+    title: 'Cash Payment Awaiting Confirmation',
+    message: `${passenger.name || 'Passenger'} requested cash payment of ₹${(booking.fareTotalMinor / 100).toFixed(2)}. Please confirm upon receipt.`,
+    referenceId: booking._id,
+    referenceModel: 'Booking'
+  });
+}
+
+export async function notifyPaymentCompleted(payment, booking, trip, passenger, driver) {
+  const amountStr = (payment.amountMinor / 100).toFixed(2);
+  const p1 = createNotification({
+    userId: passenger._id || passenger,
+    organizationId: trip.organization,
+    type: 'PAYMENT_COMPLETED',
+    title: 'Payment Successful',
+    message: `Payment of ₹${amountStr} for your trip was completed via ${payment.method}.`,
+    referenceId: payment._id,
+    referenceModel: 'Payment'
+  });
+
+  const p2 = createNotification({
+    userId: driver._id || driver,
+    organizationId: trip.organization,
+    type: 'PAYMENT_COMPLETED',
+    title: 'Trip Payment Settled',
+    message: `Received ₹${amountStr} from ${passenger.name || 'Passenger'} via ${payment.method}.`,
+    referenceId: payment._id,
+    referenceModel: 'Payment'
+  });
+
+  return Promise.all([p1, p2]);
+}
+
 export default {
   createNotification,
   notifyBookingCreated,
@@ -144,5 +216,7 @@ export default {
   notifyTripStarted,
   notifyTripInProgress,
   notifyTripCompleted,
-  notifyNewChatMessage
+  notifyNewChatMessage,
+  notifyPaymentPending,
+  notifyPaymentCompleted
 };
